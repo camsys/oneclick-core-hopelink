@@ -8,6 +8,9 @@
     <%= javascript_include_tag "https://www.gstatic.com/charts/loader.js" %> <!-- For Google Charts -->
     <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
 
+    <% if request.path.start_with?('/admin/simple_translation_engine/translations') %>
+      <meta name="turbolinks-cache-control" content="no-cache">
+    <% end %>
     
   </head>
 
