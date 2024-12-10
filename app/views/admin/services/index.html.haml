@@ -1,0 +1,28 @@
+=content_for :title do
+  Services
+
+%table.table.table-hover.datatable#services-table
+  %thead.thead-default
+    %tr
+      %th Logo
+      %th Name
+      %th Type
+      %th Transportation Agency
+      %th Oversight Agency
+      %th Published?
+  =render partial: 'service', collection: @services
+-if can? :create, Service
+  = simple_form_for :service, url: admin_services_path, html: {class: 'form-horizontal', multipart: true, method: :post }, authenticity_token: true do |f|
+    =render partial: 'new_service', layout: '/layouts/new_record_panel', locals: {f: f}
+
+:javascript
+
+  $(document).ready(function() {
+    // Link to appropriate feedback detail on row click
+    $('#services-table tbody tr').click(function() {
+      window.location = $(this).data("url");
+    });
+
+    $('.datatable').DataTable({});
+
+  });

@@ -1,0 +1,9 @@
+=content_for :title do
+  -if @feedback.feedbackable.present?
+    = "Feedback about #{@feedback.subject}"
+  -else
+    = "#{@feedback.subject} Feedback"
+
+=render partial: 'feedback', layout: '/layouts/panel'
+
+=back_link admin_feedbacks_path

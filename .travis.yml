@@ -1,0 +1,52 @@
+language: ruby
+rvm:
+  - 2.6.9
+
+# https://docs.travis-ci.com/user/database-setup/#using-postgis
+services:
+- postgresql
+addons:
+  postgresql: 10
+  apt:
+    packages:
+      - postgresql-10-postgis-2.4
+
+before_install:
+- curl ifconfig.co #print IP address
+- openssl aes-256-cbc -K $encrypted_ee5f58ad4bd6_key -iv $encrypted_ee5f58ad4bd6_iv -in cpta_aws.pem.enc -out cpta_aws.pem -d
+- chmod 600 cpta_aws.pem
+
+before_script:
+- pwd
+- ls -a
+- mv config/database.yml.travis config/database.yml
+- mv config/local_env.yml.travis config/local_env.yml
+
+- psql -U postgres -c "create extension postgis"
+
+script:
+#- bundle exec /usr/bin/env RAILS_ENV=test rake db:drop
+- bundle exec /usr/bin/env RAILS_ENV=test rake db:create
+- bundle exec /usr/bin/env RAILS_ENV=test rake db:schema:load
+- bundle exec /usr/bin/env RAILS_ENV=test rake db:migrate
+- bundle exec /usr/bin/env RAILS_ENV=test rake db:seed
+- bundle exec rspec spec
+
+notifications:
+  slack:
+    on_success: change
+    rooms:
+    - camsys:lXMC55pg5oKxSTYW38zsB9jm#1click
+
+branches:
+  only:
+  - master
+  - develop
+  - lydia-hopelink-new
+
+deploy:
+  provider: script
+  script: bash travis_deploy.sh
+  skip_cleanup: true
+  on:
+    branch: develop

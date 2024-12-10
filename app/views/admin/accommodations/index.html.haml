@@ -1,0 +1,40 @@
+=content_for :title do
+  Accommodations
+
+%table.table.table-hover.datatable#accommodation-table
+  %thead.thead-default
+    %tr
+      %th Code
+      %th Name
+      %th Note
+      %th Question
+      %th Rank
+
+  -@accommodations.each do |accommodation|
+    %tr{style: "cursor: pointer", data: {url: edit_admin_accommodation_path(accommodation)}}
+      %td
+        =accommodation.code
+      %td
+        =accommodation.name
+      %td
+        =accommodation.note
+      %td
+        =accommodation.question
+      %td 
+        =accommodation.rank
+
+- if can? :create, Accommodation
+  = simple_form_for @new_accommodation, url: admin_accommodations_path, html: {class: 'form-horizontal', multipart: true, method: :post }, authenticity_token: true do |f|
+    =render partial: 'new_accommodation', layout: '/layouts/new_record_panel', locals: {f: f}
+
+:javascript
+  $(document).ready(function() {
+
+    // Link to appropriate feedback detail on row click
+    $('#accommodation-table tbody tr').click(function() {
+      window.location = $(this).data("url");
+    });
+
+    $('.datatable').DataTable({});
+
+  });

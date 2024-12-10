@@ -1,0 +1,46 @@
+// SERVICE SCHEDULES STYLING
+
+@import 'mixins';
+@import 'variables';
+@import 'bootstrap_extensions';
+
+
+.delete-schedule {
+  @include custom-btn-link($brand-info);
+}
+
+.schedule-row-body-wrapper {
+  padding: 0 10px;
+}
+
+.schedule-row-label {
+  margin: 10px 0;
+}
+
+.schedule-body {
+  @include unit-box($brand-info-pastel);
+
+  .schedule-form-group .schedule-input {
+    @include subtle-input;
+    padding-right: 0px;
+    font-weight: bold;
+  }
+
+  .btn.btn-link {
+    padding: 6px 5px 6px 0;
+  }
+}
+
+.add-day-schedule, .add-calendar-date-schedule, .add-calendar-time-schedule {
+  @include dashed-unit-box($gray-paler);
+
+  padding: 12px;
+
+  span + span {
+    margin-left: 10px;
+  }
+}
+
+.glyphicon-calendar {
+  color: #31739c;
+}

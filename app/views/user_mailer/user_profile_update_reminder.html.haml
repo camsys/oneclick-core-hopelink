@@ -1,0 +1,14 @@
+%p
+  =translate("api_v2.emails.user_profile_update_reminder.greeting")
+  %b #{@user.full_name_or_email}:
+%p
+  =translate("api_v2.emails.user_profile_update_reminder.part_1")
+  %a{href: Config.ui_url}=translate("api_v2.emails.user_profile_update_reminder.part_2a")
+  =translate("api_v2.emails.user_profile_update_reminder.part_2b")
+
+%p=translate("api_v2.emails.user_profile_update_reminder.sign_off")
+%p
+  %b
+    =translate("api_v2.emails.user_profile_update_reminder.from")
+  %br
+    %a#unsubscribe-user{href: "#{@unsubscribe_path}"}=translate("api_v2.emails.user_profile_update_reminder.unsubscribe")

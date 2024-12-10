@@ -1,0 +1,179 @@
+- ## LOCALS:
+-# should_be_readonly: A boolean meant to represent whether or not the current user
+-# can update the form
+- should_be_readonly = (cannot? :update, @service)
+
+=content_for :header do
+  Booking
+
+=simple_form_for @service,
+  url: admin_service_path, remote: true, authenticity_token: true, data: {type: 'html'},
+  html: {class: 'form-horizontal', id: form_id_from_path, multipart: true, method: :put } do |f|
+  =remote_form_input # This sends the partial_path to the controller, so it can serve back the correct partial
+
+  =f.input :booking_api, 
+      input_html: {class: 'booking-api'},
+      readonly: should_be_readonly,
+      collection: Booking.available_booking_types.map { |code, name| [code.to_s.camelcase, code] }
+  
+  -booking_details = @service.booking_details || {}
+  
+  -# RIDEPILOT
+  .booking-inputs.ride_pilot-booking.hidden
+    =f.fields_for :booking_details do |bd|
+      =bd.input :provider_id,
+        as: :integer,
+        readonly: should_be_readonly,
+        label: "RidePilot Provider ID",
+        input_html: {value: booking_details[:provider_id]}
+
+
+  -# ECOLANE
+  .booking-inputs.ecolane-booking.hidden
+    =f.fields_for :booking_details do |bd|
+      %h4.text-center Connection
+      =bd.input :external_id,
+        as: :string,
+        label: "Ecolane Agency Subdomain",
+        readonly: should_be_readonly,
+        input_html: {value: booking_details[:external_id]}
+      =bd.input :token,
+        as: :string,
+        readonly: should_be_readonly,
+        label: "Token",
+        input_html: {value: booking_details[:token]}
+      =bd.input :api_key,
+        as: :string,
+        readonly: should_be_readonly,
+        label: "API Key",
+        input_html: {value: booking_details[:api_key]}
+      =bd.input :home_counties,
+        as: :string,
+        readonly: should_be_readonly,
+        label: "Home Counties",
+        input_html: {value: booking_details[:home_counties]}
+      %hr
+      %h4.text-center Funding Rules
+      =bd.input :use_ecolane_funding_rules,
+        collection: [false, true],
+        readonly: should_be_readonly,
+        include_blank: false,
+        label: "Use Ecolane Funding Rules",
+        selected: (booking_details[:use_ecolane_funding_rules]),
+        input_html: {id: 'ecolane-rules'}
+      .oneclick-rules
+        =bd.input :preferred_funding_sources,
+          as: :text,
+          readonly: should_be_readonly,
+          label: "Permitted Funding Sources",
+          input_html: {value: booking_details[:preferred_funding_sources]}
+        - unless in_travel_patterns_mode?
+          =bd.input :ada_funding_sources,
+            as: :text,
+            readonly: should_be_readonly,
+            label: "ADA Funding Sources",
+            input_html: {value: booking_details[:ada_funding_sources]},
+          required: false
+        =bd.input :preferred_sponsors,
+          as: :text,
+          readonly: should_be_readonly,
+          label: "Permitted Sponsors",
+          input_html: {value: booking_details[:preferred_sponsors]}
+        =bd.input :banned_purposes,
+          as: :text,
+          readonly: should_be_readonly,
+          placeholder: "",
+          label: "Banned Purposes",
+          input_html: {value: booking_details[:banned_purposes]}
+        - unless in_travel_patterns_mode?
+          =bd.input :dummy_user,
+            as: :string,
+            readonly: should_be_readonly,
+            label: "Dummy/Guest User",
+            input_html: {value: booking_details[:dummy_user]},
+            required: false
+        - unless in_travel_patterns_mode?
+          =bd.input :guest_funding_sources,
+            as: :text,
+            readonly: should_be_readonly,
+            label: "Guest Funding Sources",
+            input_html: {value: booking_details[:guest_funding_sources]},
+            required: false
+        - unless in_travel_patterns_mode?
+          =bd.input :guest_purpose,
+            as: :string,
+            readonly: should_be_readonly,
+            label: "Guest Purpose",
+            input_html: {value: booking_details[:guest_purpose]},
+            required: false
+
+
+      %hr
+      %h4.text-center User Lists
+      =bd.input :banned_users,
+        as: :text,
+        readonly: should_be_readonly,
+        label: "Banned Users",
+        input_html: {value: booking_details[:banned_users]}
+      -# Temporarily disabling this since it was not working - FMRPA-77
+      -# =bd.input :trusted_users,
+      -#   as: :text,
+      -#   readonly: should_be_readonly,
+      -#   label: "Trusted Users",
+      -#   input_html: {value: booking_details[:trusted_users]}
+      - unless in_travel_patterns_mode?
+        =bd.input :require_selfservice_validation,
+          collection: [false, true],
+          readonly: should_be_readonly,
+          include_blank: false,
+          label: "Require Self Service Validation",
+          selected: (booking_details[:require_selfservice_validation])
+
+  -# TRAPEZE
+  .booking-inputs.trapeze-booking.hidden
+    =f.fields_for :booking_details do |bd|
+      =bd.input :trapeze_provider_id,
+        as: :integer,
+        readonly: should_be_readonly,
+        label: "Trapeze Provider ID",
+        input_html: {value: booking_details[:trapeze_provider_id]}
+
+:javascript
+  $(document).ready(function() {
+
+    // Create a FormHandler to handle submit and cancel events
+    var fh = new FormHandler($('#{form_selector_from_id}'));
+    
+    // Handle toggling between different booking apis:
+    var bookingApiInput = $('.booking-api');
+
+    // Show appropriate booking details inputs and hide all others
+    var showBookingInputs = function() {
+      var bookingApi = bookingApiInput.val();
+      $('.booking-inputs').addClass('hidden');
+      $('.booking-inputs.' + bookingApi + '-booking').removeClass('hidden');
+    };
+    showBookingInputs(); // On page load, show proper booking inputs
+    bookingApiInput.change(showBookingInputs); // Show correct booking inputs when a new api is selected.
+
+    // Handle Toggleing between Ecolane Rules And Oneclick Funding Rules
+    var hideOneclickRules = function() {
+      var ecolane_rules = ecolaneRulesInput.val();
+      if(ecolane_rules == 'true'){
+        console.log('hide');
+        $('.oneclick-rules').addClass('hidden');
+      }else{
+        $('.oneclick-rules').removeClass('hidden');
+      }
+    };
+    var ecolaneRulesInput = $('#ecolane-rules');
+    ecolaneRulesInput.change(hideOneclickRules);
+    hideOneclickRules();
+
+
+    // Form reset callback
+    fh.onReset(function() {
+      showBookingInputs(); // Show correct booking inputs when form is reset
+    });
+
+  });

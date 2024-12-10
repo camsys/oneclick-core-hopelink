@@ -1,0 +1,72 @@
+=content_for :header do
+  Download Report Tables
+
+=simple_form_for :download_table,
+  url: download_table_admin_reports_path,
+  html: {class: 'form-horizontal', id: form_id_from_path, multipart: true },
+  authenticity_token: true do |f|
+  
+  =f.input :table_name, required: true, 
+    collection: @download_tables, 
+    label: "Select Report Type"
+  
+  .table-download-options.users.hidden
+    =render partial: 'users_table_download_options', locals: {f: f}
+  
+  .table-download-options.trips.hidden
+    =render partial: 'trips_table_download_options', locals: {f: f}
+
+  .table-download-options.services.hidden
+    =render partial: 'services_table_download_options', locals: {f: f}
+    
+  .table-download-options.requests.hidden
+    =render partial: 'requests_table_download_options', locals: {f: f}
+
+  .table-download-options.feedback.hidden
+    =render partial: 'feedback_table_download_options', locals: {f: f}
+
+  .table-download-options.feedback-aggregated.hidden
+    =render partial: 'feedback_table_download_options', locals: {f: f}
+
+  .table-download-options.find-services.hidden
+    =render partial: 'find_services_download_options', locals: {f: f}
+
+    
+=content_for :footer do
+  .btn.btn-primary.download-table-form-submit Download Table File
+    
+:javascript
+  $(document).ready(function() {
+
+    $('.datepicker').datepicker({format: 'yyyy-mm-dd'});
+        
+    // Hides and disables all table options and then shows and enables the relevant ones.
+    var showTableDownloadOptions = function(table) {
+      console.log(table);
+      $('.table-download-options').addClass('hidden');
+      $('.table-download-options :input').prop('disabled', true);
+      if(table) {
+        var tableDownloadOptionsSelector = '.' + table.toLowerCase().replace(' ', '-');
+        $(tableDownloadOptionsSelector).removeClass('hidden');
+        $(tableDownloadOptionsSelector).find(':input').prop('disabled', false);        
+      }
+    }
+    
+    // Show table options on document ready if a table is selected.
+    var initialTable = $('select#download_table_table_name').val();
+    showTableDownloadOptions(initialTable);
+    
+    // Show appropriate table options when a new table is selected.
+    $('select#download_table_table_name').change(function() {
+      var table = $(this).val();
+      showTableDownloadOptions(table);
+    });
+  
+    // Form Submit handler
+    $('.download-table-form-submit').click(function() {
+      if($('select#download_table_table_name').val() !== "") {
+        $('form#form-download-tables').submit();
+      }
+    });
+
+  });

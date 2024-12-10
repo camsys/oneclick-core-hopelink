@@ -1,0 +1,48 @@
+@import 'variables';
+
+// Makes a custom-colored bootstrap link button
+@mixin custom-btn-link($color) {
+  &.btn.btn-link {
+    color: $color;
+    &:hover {
+      color: darken($color, 10%);
+    }
+  }
+}
+
+// Button-like box to represent a unit or model of some sort
+@mixin unit-box($color) {
+  border: 2px solid $color;
+  border-radius: 3px;
+  background-color: lighten($color, 10%);
+  display: inline-block;
+  margin: 0 5px 10px 0;
+  padding: 5px 0 5px 5px;
+  vertical-align: middle;
+
+  &:hover {
+    background-color: lighten($color, 8%);
+  }
+}
+
+@mixin dashed-unit-box($color) {
+  @include unit-box($color);
+  border-style: dashed;
+}
+
+@mixin subtle-input {
+  border: none;
+  background-color: transparentize(white, 0.6);
+  box-shadow: none;
+  
+  &:invalid {
+    font-style: italic;
+    font-weight: normal;
+  }
+  
+  &:disabled {
+    font-style: italic;
+    font-weight: normal;
+    color: $gray-pale;
+  }
+}

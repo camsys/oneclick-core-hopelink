@@ -1,0 +1,33 @@
+%table.table.table-hover.feedbacks-table.datatable
+  %thead.thead-default
+    %tr
+      %th Date
+      %th Service
+      %th Rating
+      %th Review
+      %th Contact
+  %tbody
+    -@feedbacks.each do |feedback|
+      %tr{style: "cursor: pointer", data: {url: admin_feedback_path(feedback)}}
+        %td.text-nowrap
+          =feedback.created_at.strftime("%Y-%m-%d")
+          -if feedback.created_at < (Time.now - (Config.feedback_overdue_days || 5).days) and not feedback.acknowledged
+            %span.label.label-danger Overdue
+        %td
+          =feedback.subject
+        %td
+          -if feedback.rating.present?
+            =rating_stars(feedback.rating)
+        %td
+          =truncate(feedback.review, length: 50)
+        %td
+          =feedback.contact
+
+:javascript
+  $(document).ready(function() {
+  
+    // Link to appropriate feedback detail on row click
+    $('.feedbacks-table tbody tr').click(function() {
+      window.location = $(this).data("url");
+    });
+  });

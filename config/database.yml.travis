@@ -1,0 +1,5 @@
+test:
+  adapter: postgis
+  encoding: unicode
+  database: oneclick-core_test
+  username: postgres

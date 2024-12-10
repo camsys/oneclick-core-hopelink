@@ -1,0 +1,47 @@
+@import 'variables';
+
+.panel-info-bold {
+  border: 1px solid $brand-info-pastel;
+  background-color: $brand-info-pale;
+}
+
+.btn.btn-circle {
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 1.42;
+  border-radius: 15px;
+}
+
+.panel-heading span.badge,
+th span.badge, td span.badge, span.badge {
+  &.badge-primary {
+    background-color: $brand-primary;
+  }
+
+  &.badge-success {
+    background-color: $brand-success;
+  }
+  
+  &.badge-info {
+    background-color: $brand-info;
+  }
+  
+  &.badge-warning {
+    background-color: $brand-warning;
+  }
+  
+  &.badge-danger {
+    background-color: $brand-danger;
+  }
+}
+
+#flash-display {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  z-index: 1000;
+}
