@@ -41,6 +41,7 @@ class Config < ApplicationRecord
     otp_car_park_quantity: 3,
     otp_transit_quantity: 3,
     otp_paratransit_quantity: 3,
+    paratransit_drive_time_multiplier: 2.5, # Default value for the paratransit drive time multiplier
     password_required_letters: 0,
     password_required_uppercase: 0,
     password_required_lowercase: 0,

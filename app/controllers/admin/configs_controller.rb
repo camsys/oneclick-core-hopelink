@@ -20,6 +20,7 @@ class Admin::ConfigsController < Admin::AdminController
     :otp_car_park_quantity,
     :otp_transit_quantity,
     :otp_paratransit_quantity,
+    :paratransit_drive_time_multiplier,
     # :otp_max_itineraries_shown,
     :tff_api_key,
     :uber_token,

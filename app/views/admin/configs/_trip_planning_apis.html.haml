@@ -36,6 +36,11 @@
     input_html: {value: Config.otp_itinerary_quantity},
     as: :integer
 
+  = f.input :paratransit_drive_time_multiplier, required: true,
+      label: "Multiplier for Paratransit Drive Time",
+      input_html: { value: Config.paratransit_drive_time_multiplier },
+      as: :float 
+
   -# = f.input :otp_max_itineraries_shown, required: true,
   -#   label: "The maximum number of requested Itineraries that we show per transit type.",
   -#   input_html: {value: Config.otp_max_itineraries_shown},

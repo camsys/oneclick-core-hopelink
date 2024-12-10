@@ -19,195 +19,205 @@ module OTP
     # Makes multiple OTP requests in parallel, and returns once they're all done.
     # Send it a list or array of request hashes.
     def multi_plan(*requests)
-      requests = requests.flatten.uniq {|req| req[:label]} # Discard any requests with duplicate labels
-      responses = nil
-      EM.run do
-        multi = EM::MultiRequest.new
-        requests.each_with_index do |request, i|
-          url = plan_url(request)
-          multi.add (request[:label] || "req#{i}".to_sym), EM::HttpRequest.new(url, connect_timeout: 60, inactivity_timeout: 60, tls: {verify_peer: true}).get
-        end
-
-        responses = nil
-        multi.callback do
-          EM.stop
-          responses = multi.responses 
+      requests = requests.flatten.uniq { |req| req[:label] } # Discard duplicate labels
+    
+      bundler = HTTPRequestBundler.new
+    
+      # Add all requests to the bundler, iterating over request types
+      requests.each_with_index do |request, i|
+        request_types = determine_request_types(request[:options]) # Existing logic for determining trip types
+    
+        request_types.each do |type, type_options|
+          transport_modes = type_options[:modes] # Modes for this trip type
+          body = build_graphql_body(
+            request[:from],
+            request[:to],
+            request[:trip_time],
+            transport_modes
+          )
+          url = "#{@base_url}/otp/routers/default/index/graphql"
+    
+          label = "#{request[:label] || "req#{i}"}_#{type}".to_sym
+          bundler.add(label, url, :post, head: { 'Content-Type' => 'application/json' }, body: body.to_json)
         end
       end
+    
+      bundler.make_calls
+    
+      # Return the parsed responses
+      bundler.responses
+    end
+    
+    def plan(from, to, trip_datetime, arrive_by = true, transport_modes = nil, options = {})
+      # Default modes based on options or transport_modes
+      transport_modes ||= determine_default_modes(options) # Logic to get default modes
 
-      return responses
+      # GraphQL endpoint
+      url = "#{@base_url}/index/graphql"
 
+      Rails.logger.info("OTP Request: #{from} to #{to} at #{trip_datetime} with modes #{transport_modes}")
+      Rails.logger.info("Url: #{url}")
+
+      # Build GraphQL body
+      body = build_graphql_body(from, to, trip_datetime, transport_modes)
+      
+      headers = {
+        'Content-Type' => 'application/json',
+        'x-user-email' => '1-click@camsys.com',
+        'x-user-token' => 'sRRTZ3BV3tmms1o4QNk2'
+      }
+
+      # Use HTTPRequestBundler for a single request
+      bundler = HTTPRequestBundler.new
+      bundler.add(:plan_request, url, :post, head: headers, body: body.to_json)
+      Rails.logger.info("GraphQL Request: #{body}")
+      Rails.logger.info("GraphQL URL: #{url}")
+      Rails.logger.info("GraphQL Headers: #{headers}")
+      bundler.make_calls
+
+      # Process and parse the response
+      response = bundler.response(:plan_request)
+
+      response    
     end
 
-    # Constructs an OTP request url
-    def plan_url(request)
-      build_url(request[:from], request[:to], request[:trip_time], request[:arrive_by], request[:options] || {})
-    end
-
-    ###
-    # from and to should be [lat,lng] arrays;
-    # trip_datetime should be a DateTime object;
-    # arrive_by should be a boolean
-    # Accepts a hash of additional options, none of which are required to make the plan call run
-    def plan(from, to, trip_datetime, arrive_by=true, options={})
-
-      url = build_url(from, to, trip_datetime, arrive_by, options)
-
-      begin
-        resp = Net::HTTP.get_response(URI.parse(url))
-      rescue Exception=>e
-        return {'id'=>500, 'msg'=>e.to_s}
+    def determine_request_types(options = {})
+      {
+        transit: { modes: [{ mode: "TRANSIT" }] },
+        walk: { modes: [{ mode: "WALK" }] },
+        flex: { modes: [{ mode: "FLEX", qualifier: "DIRECT" }] }
+      }.select do |type, _|
+        options[:allow_flex] || type != :flex
       end
+    end  
 
-      return resp
-
-    end
-
-    def build_url(from, to, trip_datetime, arrive_by, options={})
-      # Set Default Options
-      arrive_by = arrive_by.nil? ? true : arrive_by
-      mode = options[:mode] || "TRANSIT,WALK"
-      wheelchair = options[:wheelchair] || "false"
-      walk_speed = options[:walk_speed] || 3.0 #walk_speed is defined in MPH and converted to m/s before going to OTP
-      max_walk_distance = options[:max_walk_distance] || 2 #max_walk_distance is defined in miles and converted to meters before going to OTP v1
-      max_bicycle_distance = options[:max_bicycle_distance] || 5
-      optimize = options[:optimize] || 'QUICK'
-      num_itineraries = options[:num_itineraries] || Config.otp_itinerary_quantity
-      min_transfer_time = options[:min_transfer_time] || nil
-      max_transfer_time = options[:max_transfer_time] || nil
-      banned_routes = options[:banned_routes] || nil
-      preferred_routes = options[:preferred_routes] || nil
-
+    def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
+      arrive_by = options[:arrive_by].nil? ? true : options[:arrive_by]
+      walk_speed = options[:walk_speed] || 3.0 # in m/s
+      max_walk_distance = options[:max_walk_distance] || 2 * 1609.34 # in meters
+      max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
       bike_reluctance = options[:bike_reluctance] || Config.bike_reluctance
-      wait_reluctance = options[:wait_reluctance]
 
-      #Parameters
-      time = trip_datetime.strftime("%-I:%M%p")
-      date = trip_datetime.strftime("%Y-%m-%d")
-
-      plan_url = @base_url + '/plan?'
-
-      url_options = "&time=" + time
-      url_options += "&mode=" + mode + "&date=" + date
-      url_options += "&toPlace=" + to[0].to_s + ',' + to[1].to_s + "&fromPlace=" + from[0].to_s + ',' + from[1].to_s
-      url_options += "&wheelchair=" + wheelchair.to_s
-      url_options += "&arriveBy=" + arrive_by.to_s
-      url_options += "&walkSpeed=" + (0.44704*walk_speed).to_s
-      url_options += "&showIntermediateStops=" + "true"
-      url_options += "&showStopTimes=" + "true"
-      url_options += "&showNextFromDeparture=true"
-
-      if banned_routes
-        url_options += "&bannedRoutes=" + banned_routes
-      end
-
-      if preferred_routes
-        url_options += "&preferredRoutes=" + preferred_routes
-        url_options += "&otherThanPreferredRoutesPenalty=7200"#VERY High penalty for not using the preferred route
-      end
-
-      unless min_transfer_time.nil?
-        url_options += "&minTransferTime=" + min_transfer_time.to_s
-      end
-
-      # v2 doesn't like max* fields in favor of *reluctance fields
-      # reluctance fields are also in v1 but we only use them in v2 here
-      if @version == 'v2'
-        if mode == "TRANSIT,BICYCLE" or mode == "BICYCLE"
-          unless bike_reluctance.nil?
-            url_options += "&bikeReluctance=" + bike_reluctance.to_s
-          end
+      # Determine number of itineraries for the transport mode
+      num_itineraries = transport_modes.map do |mode|
+        case mode[:mode]
+        when "TRANSIT"
+          Config.otp_transit_quantity
+        when "FLEX"
+          Config.otp_paratransit_quantity
+        when "BICYCLE"
+          Config.otp_bike_quantity
+        when "WALK"
+          Config.otp_walk_quantity
         else
-          unless walk_reluctance.nil?
-            url_options += "&walkReluctance=" + walk_reluctance.to_s
-          end
+          Config.otp_itinerary_quantity
         end
-      else
-        unless max_transfer_time.nil?
-          url_options += "&maxTransferTime=" + max_transfer_time.to_s
-        end
-
-        # If it's a bicycle trip, OTP uses walk distance as the bicycle distance
-        if mode == "TRANSIT,BICYCLE" or mode == "BICYCLE"
-          url_options += "&maxWalkDistance=" + (1609.34*(max_bicycle_distance || 5.0)).to_s
+      end.first || Config.otp_itinerary_quantity
+    
+      # Format transport modes for GraphQL
+      formatted_modes = transport_modes.map do |mode|
+        if mode[:mode] == "FLEX"
+          "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
         else
-          url_options += "&maxWalkDistance=" + (1609.34*max_walk_distance).to_s
+          "{ mode: #{mode[:mode]} }"
         end
-      end
-
-      unless wait_reluctance.nil?
-        url_options += "&waitReluctance=" + wait_reluctance.to_s
-      end
-
-      url_options += "&numItineraries=" + num_itineraries.to_s
-
-      # Unless the optimiziton = QUICK (which is the default), set additional parameters
-      case optimize.downcase
-      when 'walking'
-        url_options += "&walkReluctance=" + "20"
-      when 'transfers'
-        url_options += "&transferPenalty=" + "1800"
-      end
-
-      url = plan_url + url_options
-
-      Rails.logger.info url
-
-      return url
+      end.join(", ")
+    
+      # Build GraphQL query
+      {
+        query: <<-GRAPHQL,
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!) {
+            plan(
+              from: { lat: $fromLat, lon: $fromLon }
+              to: { lat: $toLat, lon: $toLon }
+              date: $date
+              time: $time
+              transportModes: [#{formatted_modes}]
+              numItineraries: #{num_itineraries}
+              walkSpeed: #{walk_speed}
+              maxWalkDistance: #{max_walk_distance}
+              walkReluctance: #{walk_reluctance}
+              bikeReluctance: #{bike_reluctance}
+            ) {
+              itineraries {
+                startTime
+                endTime
+                duration
+                walkTime
+                waitingTime
+                walkDistance
+                fares {
+                  type
+                  cents
+                  currency
+                  components {
+                    fareId
+                    currency
+                    cents
+                    routes {
+                      gtfsId
+                      shortName
+                    }
+                  }
+                }
+                legs {
+                  mode
+                  distance
+                  route { 
+                    gtfsId
+                    shortName
+                    longName
+                    agency {
+                      gtfsId
+                      name
+                    }
+                  }
+                  from {
+                    name
+                    lat
+                    lon
+                    departureTime
+                  }
+                  to {
+                    name
+                    lat
+                    lon
+                    arrivalTime
+                  }
+                  fareProducts {
+                    id
+                    product {
+                      name
+                      ... on DefaultFareProduct {
+                        price {
+                          amount
+                          currency {
+                            code
+                            digits
+                          }
+                        }
+                      }
+                      riderCategory {
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        GRAPHQL
+        variables: {
+          fromLat: from[0].to_f,
+          fromLon: from[1].to_f,
+          toLat: to[0].to_f,
+          toLon: to[1].to_f,
+          date: trip_datetime.strftime("%Y-%m-%d"),
+          time: trip_datetime.strftime("%H:%M")
+        }
+      }
     end
-
-    def last_built
-      url = @base_url
-      resp = Net::HTTP.get_response(URI.parse(url))
-      data = JSON.parse(resp.body)
-      time = data['buildTime']/1000
-      return Time.at(time)
-    end
-
-    def get_stops
-      stops_path = '/index/stops'
-      url = @base_url + stops_path
-      resp = Net::HTTP.get_response(URI.parse(url))
-      return JSON.parse(resp.body)
-    end
-
-    def get_routes
-      routes_path = '/index/routes'
-      url = @base_url + routes_path
-      resp = Net::HTTP.get_response(URI.parse(url))
-      return JSON.parse(resp.body)
-    end
-
-    def get_first_feed_id
-      path = '/index/feeds'
-      url = @base_url + path
-      resp = Net::HTTP.get_response(URI.parse(url))
-      return JSON.parse(resp.body).first
-    end
-
-    def get_stoptimes trip_id, agency_id=1
-      path = '/index/trips/' + agency_id.to_s + ':' + trip_id.to_s + '/stoptimes'
-      url = @base_url + path
-      resp = Net::HTTP.get_response(URI.parse(url))
-      return JSON.parse(resp.body)
-    end
-
-    # Dead code? Drew Teter - 4/7/2023
-    # def get_otp_mode trip_type
-    #   hash = {'transit': 'TRANSIT,WALK',
-    #   'bicycle_transit': 'TRANSIT,BICYCLE',
-    #   'park_transit': 'CAR_PARK,WALK,TRANSIT',
-    #   'car_transit': 'CAR,WALK,TRANSIT',
-    #   'bike_park_transit': 'BICYCLE_PARK,WALK,TRANSIT',
-    #   'paratransit': 'TRANSIT,WALK,FLEX_ACCESS,FLEX_EGRESS,FLEX_DIRECT',
-    #   'rail': 'TRAM,SUBWAY,RAIL,WALK',
-    #   'bus': 'BUS,WALK',
-    #   'walk': 'WALK',
-    #   'car': 'CAR',
-    #   'bicycle': 'BICYCLE'}
-    #   hash[trip_type.to_sym]
-    # end
 
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
     def unpack(response)
@@ -235,8 +245,19 @@ module OTP
 
     # Returns the array of itineraries
     def extract_itineraries
-      return [] unless @response && @response[:plan] && @response[:plan][:itineraries]
-      @response[:plan][:itineraries].map {|i| OTPItinerary.new(i)}
+      # Use dig to safely navigate the response
+      itineraries = @response.dig('data', 'plan', 'itineraries')
+      
+      # Log the extracted itineraries for debugging
+      
+      # Return an empty array if itineraries are nil or not an array
+      return [] unless itineraries.is_a?(Array)
+      
+      # Parse each itinerary and initialize it as an OTPItinerary object
+      itineraries.map { |i| OTPItinerary.new(i) }
+    rescue => e
+      Rails.logger.error("Error in extract_itineraries: #{e.message}")
+      []
     end
 
   end
