@@ -173,9 +173,9 @@ module OTP
                       name
                     }
                     legGeometry {
-                      points
-                      length
-                    }
+                        points
+                        length
+                      }
                   }
                   from {
                     name
