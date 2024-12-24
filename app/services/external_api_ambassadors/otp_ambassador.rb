@@ -224,6 +224,9 @@ class OTPAmbassador
     associate_legs_with_services(otp_itin)
   
   
+    otp_itin["legs"].each do |leg|
+      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
+    end
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
     start_time = otp_itin["legs"].first["from"]["departureTime"]
     end_time = otp_itin["legs"].last["to"]["arrivalTime"]
