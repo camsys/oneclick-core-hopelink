@@ -154,38 +154,56 @@ class TripPlanner
   # Builds itineraries for all trip types
   def build_all_itineraries
     Rails.logger.info("Building all itineraries for trip types: #{@trip_types}")
+    
+    # Log the trip types being processed to ensure they are correct and unique
+    @trip_types.each { |t| Rails.logger.info("Processing trip type: #{t}") }
   
+    # Build itineraries for each trip type
     trip_itineraries = @trip_types.flat_map do |t|
       Rails.logger.info("Calling build_itineraries for trip type: #{t}")
       build_itineraries(t)
     end
   
+    Rails.logger.info("Reclassifying itineraries based on legs")
     trip_itineraries.each do |itin|
       if itin.legs&.any?
-        has_transit = itin.legs.any? { |leg| leg["mode"] == "TRANSIT" }
         all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
-        
-        if all_walk
+        has_transit = itin.legs.any? { |leg| leg["mode"] != "WALK" }
+    
+        # Adjust trip type
+        if all_walk && itin.trip_type == "transit"
           Rails.logger.info("Reclassifying walk-only itinerary as walk.")
           itin.trip_type = "walk"
-        elsif has_transit
-          Rails.logger.info("Setting trip type to transit.")
+        elsif has_transit && itin.trip_type == "walk"
+          Rails.logger.info("Reclassifying transit itinerary as transit.")
           itin.trip_type = "transit"
         end
+      else
+        Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
       end
-    end
+    end    
   
+    # Separate new and existing itineraries
     new_itineraries = trip_itineraries.reject(&:persisted?)
     old_itineraries = trip_itineraries.select(&:persisted?)
   
+    # Log categorized itineraries
+    Rails.logger.info("New itineraries count: #{new_itineraries.count}")
+    Rails.logger.info("Old itineraries count: #{old_itineraries.count}")
+  
+    # Save old itineraries and associate new ones with the trip
     Itinerary.transaction do
-      old_itineraries.each(&:save!)
+      old_itineraries.each do |itin|
+        Rails.logger.info("Saving existing itinerary: #{itin.inspect}")
+        itin.save!
+      end
+  
+      Rails.logger.info("Adding new itineraries to trip: #{new_itineraries.map(&:inspect)}")
       @trip.itineraries += new_itineraries
     end
   
-    Rails.logger.info("All itineraries successfully processed.")
+    Rails.logger.info("All itineraries successfully processed for trip: #{@trip.id}")
   end
-  
 
   # Additional sanity checks can be applied here.
   def filter_itineraries
