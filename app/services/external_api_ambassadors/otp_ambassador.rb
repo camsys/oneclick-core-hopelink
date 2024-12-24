@@ -250,31 +250,27 @@ class OTPAmbassador
   def associate_legs_with_services(otp_itin)
     otp_itin.legs ||= []
     otp_itin.legs = otp_itin.legs.map do |leg|
-      Rails.logger.info("Processing leg: #{leg.inspect}")
-  
       svc = get_associated_service_for(leg)
   
-      # Handle cases where paratransit mode might not be set
-      if !leg['mode'].include?('FLEX') && leg['boardRule'] == 'mustPhone'
-        leg['mode'] = 'FLEX_ACCESS'
-      end
-  
-      # Assign service details if a service is found
       if svc
-        Rails.logger.info("Associated service: #{svc.id} - #{svc.name}")
+        # Populate fields from permitted service
         leg['serviceId'] = svc.id
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
       else
-        # Default fallback: use agencyName or agencyId if no service is found
-        Rails.logger.warn("No service associated for leg. Defaulting to agency information.")
-        leg['serviceName'] = leg['agencyName'] || leg['agencyId']
+        # Fallback to agency information
+        agency = leg.dig('route', 'agency')
+        leg['serviceId'] = nil
+        leg['serviceName'] = agency['name']
+        leg['serviceFareInfo'] = nil
+        leg['serviceLogoUrl'] = nil
       end
   
       leg
     end
-  end  
+  end
+  
   
 
   def get_associated_service_for(leg)
