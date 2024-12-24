@@ -172,6 +172,10 @@ module OTP
                       gtfsId
                       name
                     }
+                    legGeometry {
+                      points
+                      length
+                    }
                   }
                   from {
                     name
