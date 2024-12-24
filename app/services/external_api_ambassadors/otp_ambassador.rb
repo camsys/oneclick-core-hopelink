@@ -248,57 +248,57 @@ class OTPAmbassador
 
   # Modifies OTP Itin's legs, inserting information about 1-Click services
   def associate_legs_with_services(otp_itin)
-  
-    itinerary = otp_itin.is_a?(Hash) ? otp_itin['itinerary'] : otp_itin.itinerary
-  
-    unless itinerary
-      return
-    end
-  
     otp_itin.legs ||= []
     otp_itin.legs = otp_itin.legs.map do |leg|
+      Rails.logger.info("Processing leg: #{leg.inspect}")
+  
       svc = get_associated_service_for(leg)
+  
+      # Handle cases where paratransit mode might not be set
+      if !leg['mode'].include?('FLEX') && leg['boardRule'] == 'mustPhone'
+        leg['mode'] = 'FLEX_ACCESS'
+      end
   
       # Assign service details if a service is found
       if svc
+        Rails.logger.info("Associated service: #{svc.id} - #{svc.name}")
         leg['serviceId'] = svc.id
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
       else
+        # Default fallback: use agencyName or agencyId if no service is found
+        Rails.logger.warn("No service associated for leg. Defaulting to agency information.")
         leg['serviceName'] = leg['agencyName'] || leg['agencyId']
       end
   
       leg
     end
-  end
+  end  
   
 
   def get_associated_service_for(leg)
     leg ||= {}
   
-    # Extract GTFS agency ID and name
-    gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId')
-    gtfs_agency_name = leg.dig('route', 'agency', 'name')
+    # Extract GTFS agency ID and name from multiple possible locations
+    gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId') || leg['agencyId']
+    gtfs_agency_name = leg.dig('route', 'agency', 'name') || leg['agencyName']
   
-    Rails.logger.info "GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}"
+    Rails.logger.info("GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
   
-    # Attempt to find service by GTFS ID
+    # Attempt to find the service by GTFS ID first
     svc = Service.find_by(gtfs_agency_id: gtfs_agency_id) if gtfs_agency_id
   
-    # Fallback to find by GTFS Name or NULL GTFS Agency
-    if svc.nil? && gtfs_agency_name
-      svc = Service.where('LOWER(name) = ?', gtfs_agency_name.downcase).first
-    elsif svc.nil?
-      svc = Service.where(gtfs_agency_id: nil).first
-    end
+    # Fallback to GTFS Name or services without GTFS ID if needed
+    svc ||= Service.where('LOWER(name) = ?', gtfs_agency_name.downcase).first if gtfs_agency_name
+    svc ||= Service.where(gtfs_agency_id: nil).first
   
-    # Ensure service is permitted
+    # Check if the service is permitted
     if svc && @services.any? { |s| s.id == svc.id }
-      Rails.logger.info "Permitted service: #{svc.inspect}"
+      Rails.logger.info("Permitted service found: #{svc.id} - #{svc.name}")
       svc
     else
-      Rails.logger.warn "Service #{svc.inspect} not permitted. Skipping."
+      Rails.logger.warn("Service not permitted or not found: #{svc.inspect}")
       nil
     end
   end
