@@ -349,7 +349,6 @@ class TripPlanner
         companions: @options[:companions],
         cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
         transit_time: calculated_duration,
-        legs: svc.legs || []
       })
     
       itinerary
