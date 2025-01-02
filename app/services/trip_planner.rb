@@ -302,13 +302,22 @@ class TripPlanner
   
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.map do |itin|
-      has_paratransit_leg = itin.legs.any? { |leg| leg['mode'].include?('FLEX') }
-      has_transit_leg = itin.legs.any? { |leg| leg['mode'] == 'BUS' }
-
-      if has_paratransit_leg && has_transit_leg
-        itin.trip_type = 'paratransit_mixed'
+      has_walk_leg = false
+      no_paratransit = true
+      has_transit = false
+      
+      itin.legs.each do |leg|
+        has_walk_leg = true if leg['mode'] == 'WALK'
+        no_paratransit = false if leg['mode'].include?('FLEX')
+        has_transit = true unless leg['mode'].include?('FLEX') || leg['mode'] == 'WALK'
       end
       
+      # Skip this itinerary if it has a WALK leg or no paratransit
+      next nil if has_walk_leg || no_paratransit
+      
+      # Mark as mixed if it has both paratransit and transit legs
+      itin.trip_type = 'paratransit_mixed' if has_transit      
+  
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
@@ -317,6 +326,7 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
+  
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
   
       # Assign attributes from service and OTP response
@@ -336,7 +346,7 @@ class TripPlanner
   
     non_gtfs_itineraries = non_gtfs_services.map do |svc|
       Rails.logger.info("Processing non-GTFS service ID: #{svc.id}")
-    
+  
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
@@ -345,10 +355,10 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-    
+  
       # Calculate transit time
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
-    
+  
       # Assign attributes for the itinerary
       itinerary.assign_attributes({
         assistant: @options[:assistant],
@@ -356,9 +366,9 @@ class TripPlanner
         cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
         transit_time: calculated_duration,
       })
-    
+  
       itinerary
-    end    
+    end
   
     # Combine and return both sets of itineraries
     all_itineraries = (router_itineraries + non_gtfs_itineraries).compact
