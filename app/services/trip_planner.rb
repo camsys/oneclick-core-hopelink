@@ -302,7 +302,13 @@ class TripPlanner
   
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.map do |itin|
-  
+      has_paratransit_leg = itin.legs.any? { |leg| leg['mode'].include?('FLEX') }
+      has_transit_leg = itin.legs.any? { |leg| leg['mode'] == 'BUS' }
+
+      if has_paratransit_leg && has_transit_leg
+        itin.trip_type = 'paratransit_mixed'
+      end
+      
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
