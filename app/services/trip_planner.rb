@@ -308,15 +308,15 @@ class TripPlanner
       
       itin.legs.each do |leg|
         has_walk_leg = true if leg['mode'] == 'WALK'
-        no_paratransit = false if leg['mode'].include?('FLEX')
-        has_transit = true unless leg['mode'].include?('FLEX') || leg['mode'] == 'WALK'
+        no_paratransit = false if ['FLEX', 'TAXI', 'BUS'].include?(leg['mode'])
+        has_transit = true unless ['FLEX', 'TAXI', 'WALK'].include?(leg['mode'])
       end
       
-      # Skip this itinerary if it has a WALK leg or no paratransit
-      next nil if has_walk_leg || no_paratransit
+      # Skip this itinerary if it has no paratransit-like modes
+      next nil if no_paratransit
       
-      # Mark as mixed if it has both paratransit and transit legs
-      itin.trip_type = 'paratransit_mixed' if has_transit      
+      # Mark as mixed if it has both paratransit-like and transit legs
+      itin.trip_type = 'paratransit_mixed' if has_transit          
   
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
