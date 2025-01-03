@@ -174,8 +174,8 @@ module OTP
                     }
                   }
                   legGeometry {
-                        points
-                        length
+                    points
+                    length
                   }
                   from {
                     name
@@ -207,6 +207,16 @@ module OTP
                       }
                     }
                   }
+                  steps {
+                    distance
+                    relativeDirection
+                    streetName
+                    absoluteDirection
+                    area
+                    bogusName
+                    stayOn
+                    walkingBike
+                  }
                 }
               }
             }
@@ -220,7 +230,7 @@ module OTP
           date: trip_datetime.strftime("%Y-%m-%d"),
           time: trip_datetime.strftime("%H:%M")
         }
-      }
+      }      
     end
 
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
