@@ -307,11 +307,6 @@ class TripPlanner
       has_transit = false
       
       itin.legs.each do |leg|
-
-        if leg['mode'] == 'BUS'
-          Rails.logger.info("Reclassifying BUS leg as FLEX_ACCESS")
-          leg['mode'] = 'FLEX_ACCESS'
-        end
         
         has_walk_leg = true if leg['mode'] == 'WALK'
         no_paratransit = false if ['FLEX', 'TAXI', 'BUS'].include?(leg['mode'])
