@@ -221,9 +221,8 @@ class OTPAmbassador
   # Converts an OTP itinerary hash into a set of 1-Click itinerary attributes
   def convert_itinerary(otp_itin, trip_type)
     Rails.logger.info("Trip Type: #{trip_type}")
-    associate_legs_with_services(otp_itin)
-  
-  
+
+    # First, process each leg for Paratransit and set the mode
     otp_itin["legs"].each do |leg|
       Rails.logger.info("Leg: #{leg.inspect}")
       if leg["mode"] == "BUS" && leg.dig("route", "agency", "gtfsId").present?
@@ -237,14 +236,17 @@ class OTPAmbassador
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
     end
 
+    # Associate legs with services after mode adjustments
+    associate_legs_with_services(otp_itin)
+
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
     start_time = otp_itin["legs"].first["from"]["departureTime"]
     end_time = otp_itin["legs"].last["to"]["arrivalTime"]
-  
+
     # Set startTime and endTime in the first and last legs for UI compatibility
     otp_itin["legs"].first["startTime"] = start_time
     otp_itin["legs"].last["endTime"] = end_time
-  
+
     {
       start_time: Time.at(start_time.to_i / 1000).in_time_zone,
       end_time: Time.at(end_time.to_i / 1000).in_time_zone,
@@ -271,11 +273,6 @@ class OTPAmbassador
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
-
-        if svc.type == "Paratransit" && svc.gtfs_agency_id.present? && leg.dig('route', 'agency', 'gtfsId') == svc.gtfs_agency_id
-          leg['mode'] = "FLEX_ACCESS"
-        end
-
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')
