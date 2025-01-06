@@ -262,11 +262,11 @@ class OTPAmbassador
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
-  
-        # Assign FLEX_ACCESS mode if the service is paratransit
-        if svc.type == :paratransit
+
+        if svc.type == "Paratransit" && svc.gtfs_agency_id.present? && leg.dig('route', 'agency', 'gtfsId') == svc.gtfs_agency_id
           leg['mode'] = "FLEX_ACCESS"
         end
+        
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')
@@ -274,8 +274,8 @@ class OTPAmbassador
   
       leg
     end
-  end 
-  
+  end
+
   def get_associated_service_for(leg)
     leg ||= {}
   
