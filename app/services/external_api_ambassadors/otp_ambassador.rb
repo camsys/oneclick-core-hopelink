@@ -221,23 +221,23 @@ class OTPAmbassador
   # Converts an OTP itinerary hash into a set of 1-Click itinerary attributes
   def convert_itinerary(otp_itin, trip_type)
     Rails.logger.info("Trip Type: #{trip_type}")
+    associate_legs_with_services(otp_itin)
 
-    # First, process each leg for Paratransit and set the mode
     otp_itin["legs"].each do |leg|
       Rails.logger.info("Leg: #{leg.inspect}")
-      if leg["mode"] == "BUS" && leg.dig("route", "agency", "gtfsId").present?
-        Rails.logger.info("Checking for Paratransit service for leg: #{leg.inspect}")
+      if trip_type == "paratransit" && leg["mode"] == "BUS" && leg.dig("route", "agency", "gtfsId").present?
         matching_service = Service.find_by(gtfs_agency_id: leg.dig("route", "agency", "gtfsId"))
+        Rails.logger.info("Matching service: #{matching_service.inspect}")
         if matching_service&.type == "Paratransit"
           leg["mode"] = "FLEX_ACCESS"
           Rails.logger.info("Mode updated to FLEX_ACCESS for leg: #{leg.inspect}")
         end
       end
-      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
-    end
 
-    # Associate legs with services after mode adjustments
-    associate_legs_with_services(otp_itin)
+      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
+      Rails.logger.info("Route: #{leg["route"]}")
+      Rails.logger.info("Mode: #{leg["mode"]}")
+    end
 
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
     start_time = otp_itin["legs"].first["from"]["departureTime"]
