@@ -225,11 +225,6 @@ class OTPAmbassador
   
   
     otp_itin["legs"].each do |leg|
-
-      if leg['serviceId'].present? && leg['mode'] == 'BUS' && trip_type == :paratransit
-        leg['mode'] = 'FLEX_ACCESS'
-      end
-      
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
     end
 
