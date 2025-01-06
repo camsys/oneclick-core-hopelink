@@ -264,7 +264,7 @@ class OTPAmbassador
         leg['serviceLogoUrl'] = svc.full_logo_url
   
         # Assign FLEX_ACCESS mode if the service is paratransit
-        if svc.trip_type == :paratransit
+        if svc.type == :paratransit
           leg['mode'] = "FLEX_ACCESS"
         end
       else
