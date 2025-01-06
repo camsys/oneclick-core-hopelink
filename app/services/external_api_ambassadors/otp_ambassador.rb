@@ -224,15 +224,17 @@ class OTPAmbassador
     associate_legs_with_services(otp_itin)
 
     otp_itin["legs"].each do |leg|
-      Rails.logger.info("Leg: #{leg.inspect}")
-      if trip_type == "paratransit" && leg["mode"] == "BUS"
-        leg["mode"] = "FLEX_ACCESS"
-        Rails.logger.info("Mode updated to FLEX_ACCESS for leg: #{leg.inspect}")
-      end
 
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
       Rails.logger.info("Route: #{leg["route"]}")
       Rails.logger.info("Mode: #{leg["mode"]}")
+    end
+    # If we're looking at paratransit trips and there is a leg that has a mode that is "BUS", it should be changed to "flex_access"
+    if trip_type == :paratransit && otp_itin["legs"].any? { |leg| leg["mode"] == "BUS" }
+      otp_itin["legs"].each do |leg|
+        leg["mode"] = "FLEX_ACCESS" if leg["mode"] == "BUS"
+      end
+      Rails.logger.info("Paratransit trip with bus legs converted to flex_access")
     end
 
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
