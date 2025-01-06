@@ -225,6 +225,15 @@ class OTPAmbassador
   
   
     otp_itin["legs"].each do |leg|
+      Rails.logger.info("Leg: #{leg.inspect}")
+      if leg["mode"] == "BUS" && leg.dig("route", "agency", "gtfsId").present?
+        Rails.logger.info("Checking for Paratransit service for leg: #{leg.inspect}")
+        matching_service = Service.find_by(gtfs_agency_id: leg.dig("route", "agency", "gtfsId"))
+        if matching_service&.type == "Paratransit"
+          leg["mode"] = "FLEX_ACCESS"
+          Rails.logger.info("Mode updated to FLEX_ACCESS for leg: #{leg.inspect}")
+        end
+      end
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
     end
 
@@ -266,7 +275,7 @@ class OTPAmbassador
         if svc.type == "Paratransit" && svc.gtfs_agency_id.present? && leg.dig('route', 'agency', 'gtfsId') == svc.gtfs_agency_id
           leg['mode'] = "FLEX_ACCESS"
         end
-        
+
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')
