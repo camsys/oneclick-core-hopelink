@@ -222,33 +222,41 @@ class OTPAmbassador
   def convert_itinerary(otp_itin, trip_type)
     Rails.logger.info("Trip Type: #{trip_type}")
     associate_legs_with_services(otp_itin)
-
+  
     otp_itin["legs"].each do |leg|
       Rails.logger.info("Inspecting leg: #{leg.inspect}")
-
-      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
-      unless leg["route"].nil?
-        Rails.logger.info("Route: #{leg["route"]}")
-      end
-
-      if leg["serviceId"].present?
-        svc = Service.find_by(id: leg["serviceId"])
-        if svc&.service_type == "paratransit" && leg["mode"] == "BUS"
+  
+      # Extract GTFS agency ID and name
+      gtfs_agency_id = leg.dig("route", "agency", "gtfsId")
+      gtfs_agency_name = leg.dig("route", "agency", "name")
+  
+      # Match GTFS agency ID and name to a service
+      svc = Service.find_by("name LIKE ?", "%#{gtfs_agency_id}%#{gtfs_agency_name}%")
+      if svc
+        Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.service_type}")
+        
+        # Update leg mode based on service type
+        if svc.service_type == "paratransit" && leg["mode"] == "BUS"
           leg["mode"] = "FLEX_ACCESS"
           Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
         end
+      else
+        Rails.logger.info("No matching service found for GTFS agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
       end
-
+  
+      # Update route name for logging
+      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
+      Rails.logger.info("Route: #{leg["route"]}") unless leg["route"].nil?
     end
-
+  
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
     start_time = otp_itin["legs"].first["from"]["departureTime"]
     end_time = otp_itin["legs"].last["to"]["arrivalTime"]
-
+  
     # Set startTime and endTime in the first and last legs for UI compatibility
     otp_itin["legs"].first["startTime"] = start_time
     otp_itin["legs"].last["endTime"] = end_time
-
+  
     {
       start_time: Time.at(start_time.to_i / 1000).in_time_zone,
       end_time: Time.at(end_time.to_i / 1000).in_time_zone,
