@@ -327,15 +327,22 @@ class TripPlanner
       })
 
       if itinerary.service&.type == "Transit"
-        itinerary.trip_type = "paratransit_mixed"
-        if itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
-          itinerary.walk_time ||= itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum do |leg|
-            start_time = leg["from"]["departureTime"]
-            end_time = leg["to"]["arrivalTime"]
-            (end_time - start_time) / 1000
-          end  
-        end      
-        Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
+        has_paratransit = itinerary.legs.any? { |leg| leg["serviceType"] == "paratransit" }
+        has_transit = itinerary.legs.any? { |leg| leg["serviceType"] == "transit" }
+      
+        if has_paratransit && has_transit
+          itinerary.trip_type = "paratransit_mixed"
+          if itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
+            itinerary.walk_time ||= itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum do |leg|
+              start_time = leg["from"]["departureTime"]
+              end_time = leg["to"]["arrivalTime"]
+              (end_time - start_time) / 1000
+            end
+          end
+          Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
+        elsif has_transit
+          next
+        end
       end
 
       Rails.logger.info "Itinerary: #{itinerary.inspect}"
