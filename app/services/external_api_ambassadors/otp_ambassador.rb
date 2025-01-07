@@ -226,7 +226,9 @@ class OTPAmbassador
     otp_itin["legs"].each do |leg|
 
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
-      Rails.logger.info("Route: #{leg["route"]}")
+      unless leg["route"].nil?
+        Rails.logger.info("Route: #{leg["route"]}")
+      end
     end
 
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
@@ -292,10 +294,10 @@ class OTPAmbassador
   
     # Check if the service is permitted
     if svc && @services.any? { |s| s.id == svc.id }
-      Rails.logger.info("Permitted service found: #{svc.id} - #{svc.name}")
+      Rails.logger.info("Permitted service found: #{svc.name} | GTFS ID: #{svc.gtfs_agency_id}")
       svc
     else
-      Rails.logger.warn("Service not permitted or not found: #{svc.inspect}")
+      Rails.logger.warn("Service not permitted or not found: #{svc.name} | GTFS ID: #{svc.gtfs_agency_id}")
       nil
     end
   end
