@@ -328,6 +328,7 @@ class TripPlanner
 
       if itinerary.service&.type == "Transit"
         itinerary.trip_type = "paratransit_mixed"
+        itinerary.walk_time = itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum { |leg| leg["duration"] }
         Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
       end
 
