@@ -25,7 +25,11 @@ module OTP
     
       # Add all requests to the bundler, iterating over request types
       requests.each_with_index do |request, i|
-        request_types = determine_request_types(request[:options]) # Existing logic for determining trip types
+        request_types = determine_request_types(
+          allow_flex: request[:options][:allow_flex],
+          include_car: request[:options][:include_car],
+          include_transit: request[:options][:include_transit]
+        )
     
         request_types.each do |type, type_options|
           transport_modes = type_options[:modes] # Modes for this trip type
@@ -82,14 +86,22 @@ module OTP
     end
 
     def determine_request_types(options = {})
-      {
+      request_types = {
         transit: { modes: [{ mode: "TRANSIT" }] },
         walk: { modes: [{ mode: "WALK" }] },
         flex: { modes: [{ mode: "FLEX", qualifier: "DIRECT" }] }
-      }.select do |type, _|
-        options[:allow_flex] || type != :flex
+      }
+    
+      # Include car_park if both CAR and TRANSIT are present
+      if options[:include_car] && options[:include_transit]
+        request_types[:car_park] = { modes: [{ mode: "CAR", qualifier: "PARK" }] }
+      elsif options[:include_car]
+        request_types[:car] = { modes: [{ mode: "CAR" }] }
       end
-    end  
+    
+      # Only include flex if allow_flex is true
+      request_types.select { |type, _| options[:allow_flex] || type != :flex }
+    end
 
     def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
       arrive_by = options[:arrive_by].nil? ? true : options[:arrive_by]
@@ -117,14 +129,13 @@ module OTP
     
       # Format transport modes for GraphQL
       formatted_modes = transport_modes.map do |mode|
-        if mode[:mode] == "FLEX"
+        if mode[:qualifier]
           "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
         else
           "{ mode: #{mode[:mode]} }"
         end
       end.join(", ")
     
-      # Build GraphQL query
       {
         query: <<-GRAPHQL,
           query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!) {
