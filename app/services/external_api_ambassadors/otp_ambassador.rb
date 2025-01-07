@@ -236,7 +236,7 @@ class OTPAmbassador
         Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
         # Update leg mode based on service type
-        if svc.type == "paratransit" && leg["mode"] == "BUS"
+        if svc.type == "Paratransit" && leg["mode"] == "BUS"
           leg["mode"] = "FLEX_ACCESS"
           Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
         end
