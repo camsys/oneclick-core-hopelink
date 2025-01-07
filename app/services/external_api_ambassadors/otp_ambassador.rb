@@ -7,7 +7,7 @@ class OTPAmbassador
   TRIP_TYPE_DICTIONARY = {
     transit:      { label: :otp_transit, modes: "TRANSIT,WALK" },
     paratransit:  { label: :otp_paratransit, modes: "CAR" },
-    car_park:     { label: :otp_car_park, modes: "" },
+    car_park:     { label: :otp_car_park, modes: "CAR,TRANSIT,WALK" },
     taxi:         { label: :otp_car, modes: "CAR" },
     walk:         { label: :otp_walk, modes: "WALK" },
     car:          { label: :otp_car, modes: "CAR" },
@@ -25,7 +25,7 @@ class OTPAmbassador
       { mode: "TRANSIT" },
       { mode: "WALK" }
     ] },
-    car_park:     { label: :otp_car_park, modes: "CAR_PARK,TRANSIT,WALK" },
+    car_park:     { label: :otp_car_park, modes: [{ mode: "CAR", qualifier: "PARK" }, { mode: "TRANSIT" }, { mode: "WALK" }] },
     taxi:         { label: :otp_car, modes: "CAR" },
     walk:         { label: :otp_walk, modes: "WALK" },
     car:          { label: :otp_car, modes: "CAR" },
@@ -179,24 +179,22 @@ class OTPAmbassador
   # Fetches responses from the HTTP Request Bundler, and packages
   # them in an OTPResponse object
   def ensure_response(trip_type)
-    @responses ||= {} # Initialize the cache
-  
-    # Return the cached response if it exists
+    @responses ||= {}
     return @responses[trip_type] if @responses.key?(trip_type)
   
     Rails.logger.info("Ensuring response for trip_type: #{trip_type}")
-    Rails.logger.info("Checking trip_type_dictionary for trip_type: #{trip_type}")
   
-    trip_type_label = @trip_type_dictionary[trip_type][:label]
-    modes = if @trip_type_dictionary[trip_type][:modes].is_a?(String)
-              @trip_type_dictionary[trip_type][:modes].split(',').map { |mode| { mode: mode.strip } }
-            elsif @trip_type_dictionary[trip_type][:modes].is_a?(Array)
-              @trip_type_dictionary[trip_type][:modes]
+    # Fetch trip type configuration
+    trip_type_config = @trip_type_dictionary[trip_type]
+    modes = if trip_type_config[:modes].is_a?(Array)
+              trip_type_config[:modes]
             else
-              []
+              trip_type_config[:modes].split(",").map { |mode| { mode: mode.strip } }
             end
   
-    # Call the `plan` method from OTPService
+    Rails.logger.info("Modes for #{trip_type}: #{modes.inspect}")
+  
+    # Query OTP
     response = @otp.plan(
       [@trip.origin.lat, @trip.origin.lng],
       [@trip.destination.lat, @trip.destination.lng],
@@ -208,7 +206,7 @@ class OTPAmbassador
     Rails.logger.info("Plan response for trip_type #{trip_type}: #{response.inspect}")
   
     # Cache and return the response
-    if response['data'] && response['data']['plan'] && response['data']['plan']['itineraries']
+    if response.dig('data', 'plan', 'itineraries')
       @responses[trip_type] = OTPResponse.new(response)
     else
       Rails.logger.warn("No valid itineraries in response: #{response.inspect}")
