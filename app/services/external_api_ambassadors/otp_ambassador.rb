@@ -224,11 +224,21 @@ class OTPAmbassador
     associate_legs_with_services(otp_itin)
 
     otp_itin["legs"].each do |leg|
+      Rails.logger.info("Inspecting leg: #{leg.inspect}")
 
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
       unless leg["route"].nil?
         Rails.logger.info("Route: #{leg["route"]}")
       end
+
+      if leg["serviceId"].present?
+        svc = Service.find_by(id: leg["serviceId"])
+        if svc&.service_type == "paratransit" && leg["mode"] == "BUS"
+          leg["mode"] = "FLEX_ACCESS"
+          Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
+        end
+      end
+
     end
 
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
