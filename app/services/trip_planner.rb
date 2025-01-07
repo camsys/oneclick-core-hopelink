@@ -327,8 +327,8 @@ class TripPlanner
       })
 
       if itinerary.service&.type == "Transit"
-        has_paratransit = itinerary.legs.any? { |leg| leg["serviceType"] == "paratransit" }
-        has_transit = itinerary.legs.any? { |leg| leg["serviceType"] == "transit" }
+        has_paratransit = itinerary.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
+        has_transit = itinerary.legs.any? { |leg| leg["serviceType"] == "Transit" }
       
         if has_paratransit && has_transit
           itinerary.trip_type = "paratransit_mixed"
