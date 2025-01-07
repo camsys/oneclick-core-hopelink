@@ -301,7 +301,13 @@ class TripPlanner
     otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? }
   
     # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.map do |itin|     
+    router_itineraries = otp_itineraries.map do |itin|   
+
+      Rails.logger.info("Service tied to itinerary: #{itin.service_id}")
+      if itin.service&.type == "Transit"
+        itin.trip_type = "paratransit_mixed"
+        Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
+      end
   
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
@@ -322,6 +328,8 @@ class TripPlanner
         transit_time: calculated_duration,
         legs: itin.legs
       })
+
+      Rails.logger.info "Itinerary: #{itinerary.inspect}"
   
       itinerary
     end
