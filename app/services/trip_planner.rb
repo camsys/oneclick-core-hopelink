@@ -305,10 +305,6 @@ class TripPlanner
 
       Rails.logger.info("Processing OTP itinerary tied to service: #{itin.inspect}")
       Rails.logger.info("Service tied to itinerary: #{itin.service_id}")
-      if itin.service&.type == "Transit"
-        itin.trip_type = "paratransit_mixed"
-        Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
-      end
   
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
@@ -329,6 +325,11 @@ class TripPlanner
         transit_time: calculated_duration,
         legs: itin.legs
       })
+
+      if itin.service&.type == "Transit"
+        itin.trip_type = "paratransit_mixed"
+        Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
+      end
 
       Rails.logger.info "Itinerary: #{itinerary.inspect}"
   
