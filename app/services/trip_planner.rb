@@ -326,8 +326,8 @@ class TripPlanner
         legs: itin.legs
       })
 
-      if itin.service&.type == "Transit"
-        itin.trip_type = "paratransit_mixed"
+      if itinerary.service&.type == "Transit"
+        itinerary.trip_type = "paratransit_mixed"
         Rails.logger.info("Transit service detected, changing trip type to paratransit_mixed")
       end
 
