@@ -301,23 +301,7 @@ class TripPlanner
     otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? }
   
     # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.map do |itin|
-      has_walk_leg = false
-      no_paratransit = true
-      has_transit = false
-      
-      itin.legs.each do |leg|
-        
-        has_walk_leg = true if leg['mode'] == 'WALK'
-        no_paratransit = false if ['FLEX', 'TAXI', 'BUS'].include?(leg['mode'])
-        has_transit = true unless ['FLEX', 'TAXI', 'WALK'].include?(leg['mode'])
-      end
-      
-      # Skip this itinerary if it has no paratransit-like modes
-      next nil if no_paratransit
-      
-      # Mark as mixed if it has both paratransit-like and transit legs
-      itin.trip_type = 'paratransit_mixed' if has_transit          
+    router_itineraries = otp_itineraries.map do |itin|     
   
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)

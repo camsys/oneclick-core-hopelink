@@ -227,14 +227,6 @@ class OTPAmbassador
 
       leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
       Rails.logger.info("Route: #{leg["route"]}")
-      Rails.logger.info("Mode: #{leg["mode"]}")
-    end
-    # If we're looking at paratransit trips and there is a leg that has a mode that is "BUS", it should be changed to "flex_access"
-    if trip_type == :paratransit && otp_itin["legs"].any? { |leg| leg["mode"] == "BUS" }
-      otp_itin["legs"].each do |leg|
-        leg["mode"] = "FLEX_ACCESS" if leg["mode"] == "BUS"
-      end
-      Rails.logger.info("Paratransit trip with bus legs converted to flex_access")
     end
 
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
@@ -287,7 +279,9 @@ class OTPAmbassador
     gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId') || leg['agencyId']
     gtfs_agency_name = leg.dig('route', 'agency', 'name') || leg['agencyName']
   
-    Rails.logger.info("GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
+    if gtfs_agency_id != nil || gtfs_agency_name != nil
+      Rails.logger.info("GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
+    end
   
     # Attempt to find the service by GTFS ID first
     svc = Service.find_by(gtfs_agency_id: gtfs_agency_id) if gtfs_agency_id
