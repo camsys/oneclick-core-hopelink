@@ -297,10 +297,13 @@ class TripPlanner
     return [] unless @available_services[:paratransit].present?
     
     # OTP-based itineraries
+    inspect_first_otp_itinerary = otp_itineraries.first
+    Rails.logger.info("Inspecting first OTP itinerary: #{inspect_first_otp_itinerary.inspect}")
+    
     otp_itineraries = build_fixed_itineraries(:paratransit)
     .select { |itin| itin.service_id.present? }
     .select { |itin| itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" } }
-      
+
     # Filter out transit-only itineraries
     otp_itineraries.reject! do |itin|
       has_paratransit = itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
