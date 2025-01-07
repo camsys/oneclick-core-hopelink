@@ -303,6 +303,7 @@ class TripPlanner
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.map do |itin|   
 
+      Rails.logger.info("Processing OTP itinerary tied to service: #{itin.inspect}")
       Rails.logger.info("Service tied to itinerary: #{itin.service_id}")
       if itin.service&.type == "Transit"
         itin.trip_type = "paratransit_mixed"
