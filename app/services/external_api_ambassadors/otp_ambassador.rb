@@ -233,10 +233,10 @@ class OTPAmbassador
       # Match GTFS agency ID and name to a service
       svc = Service.find_by("name LIKE ?", "%#{gtfs_agency_id}%#{gtfs_agency_name}%")
       if svc
-        Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.service_type}")
+        Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
         # Update leg mode based on service type
-        if svc.service_type == "paratransit" && leg["mode"] == "BUS"
+        if svc.type == "paratransit" && leg["mode"] == "BUS"
           leg["mode"] = "FLEX_ACCESS"
           Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
         end
