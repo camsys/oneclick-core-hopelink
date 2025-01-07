@@ -281,9 +281,11 @@ class OTPAmbassador
     gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId') || leg['agencyId']
     gtfs_agency_name = leg.dig('route', 'agency', 'name') || leg['agencyName']
   
+    # Skip logging and processing for legs without an agency ID or name
+    return nil if gtfs_agency_id.nil? && gtfs_agency_name.nil?
+  
     Rails.logger.info("======================================================")
-    Rails.logger.info("Route: #{leg.dig('route', 'shortName') || 'N/A'}")
-    Rails.logger.info("GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
+    Rails.logger.info("OTP Option GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
   
     # Attempt to find the service by GTFS ID first
     svc = Service.find_by(gtfs_agency_id: gtfs_agency_id) if gtfs_agency_id
@@ -294,12 +296,9 @@ class OTPAmbassador
   
     if svc && @services.any? { |s| s.id == svc.id }
       Rails.logger.info("[SUCCESS] Permitted service found: #{svc.name} | GTFS ID: #{svc.gtfs_agency_id}")
-      Rails.logger.info("------------------------------------------------------")
       svc
     else
-      reason = if gtfs_agency_id.nil? && gtfs_agency_name.nil?
-                 "No GTFS ID or name provided."
-               elsif gtfs_agency_id && !Service.exists?(gtfs_agency_id: gtfs_agency_id)
+      reason = if gtfs_agency_id && !Service.exists?(gtfs_agency_id: gtfs_agency_id)
                  "No matching GTFS ID found in the database."
                elsif gtfs_agency_name && !Service.exists?(['LOWER(name) = ?', gtfs_agency_name.downcase])
                  "No matching service name found in the database."
@@ -307,10 +306,9 @@ class OTPAmbassador
                  "Service not permitted by the current scope."
                end
       Rails.logger.warn("[FAILED] Service skipped: #{reason}")
-      Rails.logger.info("------------------------------------------------------")
       nil
     end
-  end
+  end  
   
 
   # OTP Lists Car and Walk as having 0 transit time
