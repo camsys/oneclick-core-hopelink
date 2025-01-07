@@ -297,8 +297,10 @@ class TripPlanner
     return [] unless @available_services[:paratransit].present?
     
     # OTP-based itineraries
-    otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? }
-  
+    otp_itineraries = build_fixed_itineraries(:paratransit)
+    .select { |itin| itin.service_id.present? }
+    .select { |itin| itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" } }
+      
     # Filter out transit-only itineraries
     otp_itineraries.reject! do |itin|
       has_paratransit = itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
@@ -343,7 +345,6 @@ class TripPlanner
         Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
       end
   
-      Rails.logger.info "Itinerary: #{itinerary.inspect}"
       itinerary
     end
     
