@@ -285,7 +285,7 @@ class OTPAmbassador
     return nil if gtfs_agency_id.nil? && gtfs_agency_name.nil?
   
     Rails.logger.info("======================================================")
-    Rails.logger.info("OTP Option GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
+    Rails.logger.info("OTP Option | Name: #{gtfs_agency_name}, GTFS Agency ID: #{gtfs_agency_id}")
   
     # Attempt to find the service by GTFS ID first
     svc = Service.find_by(gtfs_agency_id: gtfs_agency_id) if gtfs_agency_id
@@ -295,7 +295,7 @@ class OTPAmbassador
     svc ||= Service.where(gtfs_agency_id: nil).first
   
     if svc && @services.any? { |s| s.id == svc.id }
-      Rails.logger.info("[SUCCESS] Permitted service found: #{svc.name} | GTFS ID: #{svc.gtfs_agency_id}")
+      Rails.logger.info("[SUCCESS] Permitted service found in 1click: #{svc.name}, GTFS ID: #{svc.gtfs_agency_id}, service type: #{svc.type}")
       svc
     else
       reason = if gtfs_agency_id && !Service.exists?(gtfs_agency_id: gtfs_agency_id)
