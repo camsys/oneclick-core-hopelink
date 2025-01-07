@@ -198,7 +198,6 @@ class TripPlanner
         itin.save!
       end
   
-      Rails.logger.info("Adding new itineraries to trip: #{new_itineraries.map(&:inspect)}")
       @trip.itineraries += new_itineraries
     end
   
@@ -301,11 +300,7 @@ class TripPlanner
     otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? }
   
     # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.map do |itin|   
-
-      Rails.logger.info("Processing OTP itinerary tied to service: #{itin.inspect}")
-      Rails.logger.info("Service tied to itinerary: #{itin.service_id}")
-  
+    router_itineraries = otp_itineraries.map do |itin|     
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
