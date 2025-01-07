@@ -340,7 +340,7 @@ class TripPlanner
             end
           end
           Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
-        elsif has_transit
+        elsif has_transit && !has_paratransit
           next
         end
       end
