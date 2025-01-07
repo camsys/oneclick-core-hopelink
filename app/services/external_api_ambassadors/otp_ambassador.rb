@@ -231,7 +231,7 @@ class OTPAmbassador
       gtfs_agency_name = leg.dig("route", "agency", "name")
   
       # Match GTFS agency ID and name to a service
-      svc = Service.find_by(name: gtfs_agency_name, gtfs_agency_id: gtfs_agency_id)
+      svc = Service.find_by(gtfs_agency_id: gtfs_agency_id)
       if svc
         Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
