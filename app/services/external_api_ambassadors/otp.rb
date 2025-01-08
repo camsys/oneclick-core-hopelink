@@ -113,17 +113,21 @@ module OTP
 
       # Determine number of itineraries for the transport mode
       num_itineraries = transport_modes.map do |mode|
-        case mode[:mode]
-        when "TRANSIT"
-          Config.otp_transit_quantity
-        when "FLEX"
-          Config.otp_paratransit_quantity
-        when "BICYCLE"
-          Config.otp_bike_quantity
-        when "WALK"
-          Config.otp_walk_quantity
+        if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
+          Config.otp_car_park_quantity
         else
-          Config.otp_itinerary_quantity
+          case mode[:mode]
+          when "TRANSIT"
+            Config.otp_transit_quantity
+          when "FLEX"
+            Config.otp_paratransit_quantity
+          when "BICYCLE"
+            Config.otp_bike_quantity
+          when "WALK"
+            Config.otp_walk_quantity
+          else
+            Config.otp_itinerary_quantity
+          end
         end
       end.first || Config.otp_itinerary_quantity
     
