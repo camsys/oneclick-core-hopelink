@@ -119,6 +119,8 @@ class OTPAmbassador
       otp_paratransit: Config.otp_paratransit_quantity
     }
 
+    Rails.logger.info("Max itineraries for #{trip_type_label}: #{quantity_config[trip_type_label]}")
+
     quantity_config[trip_type_label]
   end
 
@@ -163,6 +165,8 @@ class OTPAmbassador
   # Formats the trip as an OTP request based on trip_type
   def format_trip_as_otp_request(trip_type)
     num_itineraries = max_itineraries(trip_type[:label])
+    Rails.logger.info("Formatting trip as OTP request for trip_type: #{trip_type}")
+    Rails.logger.info("Max itineraries for #{trip_type[:label]}: #{num_itineraries}")
     {
       from: [@trip.origin.lat, @trip.origin.lng],
       to: [@trip.destination.lat, @trip.destination.lng],
