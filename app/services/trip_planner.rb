@@ -330,8 +330,8 @@ class TripPlanner
         legs: itin.legs
       })
   
-      has_paratransit = itinerary.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
-      has_transit = itinerary.legs.any? { |leg| leg["serviceType"] == "Transit" }
+      has_paratransit = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+      has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
   
       if has_paratransit && has_transit
         itinerary.trip_type = "paratransit_mixed"
