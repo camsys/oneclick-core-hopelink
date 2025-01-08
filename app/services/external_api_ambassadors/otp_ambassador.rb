@@ -86,9 +86,7 @@ class OTPAmbassador
     end
   
     itineraries = ensure_response(trip_type)&.itineraries || []
-    
-    Rails.logger.info("Raw itineraries fetched for #{trip_type}: #{itineraries.inspect}")
-    
+        
     itineraries.map { |i| convert_itinerary(i, trip_type) }.compact
   end
   
@@ -226,7 +224,6 @@ class OTPAmbassador
     associate_legs_with_services(otp_itin)
   
     otp_itin["legs"].each do |leg|
-      Rails.logger.info("Inspecting leg: #{leg.inspect}")
   
       # Extract GTFS agency ID and name
       gtfs_agency_id = leg.dig("route", "agency", "gtfsId")
