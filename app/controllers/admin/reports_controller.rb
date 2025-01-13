@@ -123,6 +123,24 @@ class Admin::ReportsController < Admin::AdminController
       @trips = @trips.joins(itineraries: :booking)
                      .where(itineraries:{trip_type: 'paratransit'}, bookings:{created_in_1click: true})
     end
+
+    # If a user is in travel patterns mode and they've selected ecolane denied trips only
+    if Config.dashboard_mode.to_sym == :travel_patterns && params[:ecolane_denied_trips_only].to_bool
+      # Filter trips that were denied by Ecolane and have no snapshot or have a snapshot that was also denied
+      matching_trip_ids = @trips.select do |trip|
+        # Check the actual status of the trip
+        actual_status = trip.disposition_status
+        # Check the snapshot status of the trip  
+        snapshot_status = trip.ecolane_booking_snapshot&.disposition_status
+        
+        # Return true if the trip was denied by Ecolane and has a snapshot that was also denied
+        actual_status == Trip::DISPOSITION_STATUSES[:ecolane_denied] &&
+          (snapshot_status.nil? || snapshot_status == Trip::DISPOSITION_STATUSES[:ecolane_denied])
+      end.map(&:id)
+      
+      @trips = @trips.where(id: matching_trip_ids)
+    end    
+
     @trips = @trips.order(:trip_time)
     respond_to do |format|
       format.csv { send_data @trips.to_csv(limit: CSVWriter::DEFAULT_RECORD_LIMIT, in_travel_patterns_mode: in_travel_patterns_mode?) }
@@ -257,6 +275,7 @@ class Admin::ReportsController < Admin::AdminController
       :trip_only_created_in_1click,
       :trip_destination_recipe,
       {purposes: []},
+      :ecolane_denied_trips_only,
       :oversight_agency,
       
       # USER FILTERS

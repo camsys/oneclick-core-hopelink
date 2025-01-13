@@ -11,7 +11,7 @@
   =f.hidden_field :trip_only_created_in_1click, value: true
   
 -# TRIP PURPOSES
-- unless Config.dashboard_mode == "travel_patterns" && current_user.currently_oversight?
+- unless in_travel_patterns_mode?
   .purposes-filter
     - if Config.dashboard_mode == "travel_patterns" && (current_user.transportation_user? || current_user.currently_transportation?)
       - purposes_collection = Purpose.for_user(current_user).map{|p| ["#{p[:name]}", p[:id]]}.sort_by { |p| p[0].downcase }
@@ -28,6 +28,10 @@
       collection: OversightAgency.all,
       value_method: :id,
       label: "Planned By"
+
+-# Only Ecolane Denied Trips
+- if Config.dashboard_mode.to_sym == :travel_patterns
+  = f.input :ecolane_denied_trips_only, as: :boolean, label: "Only Ecolane Denied Trips", checked: true
 
 -# TRIP ORIGIN REGION BUILDER
 =render partial: 'admin/services/region_builder',
@@ -47,7 +51,7 @@
 
 :javascript
   $(document).ready(function() {
-
+    
     
     // Set up serializer and autocomplete for region builders
     
@@ -65,4 +69,9 @@
       ingredientLabelTag: '#{escape_javascript render partial: "admin/geographies/ingredient_label"}'
     });
 
+    // Auto-check the Ecolane Denied Trips checkbox on page load if in travel patterns mode
+    if ($('#download_table_ecolane_denied_trips_only').length) {
+      $('#download_table_ecolane_denied_trips_only').prop('checked', true);
+    }
+    
   });
