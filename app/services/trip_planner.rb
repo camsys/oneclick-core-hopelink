@@ -168,8 +168,10 @@ class TripPlanner
     trip_itineraries.each do |itin|
       if itin.legs&.any?
         all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
-        has_transit = itin.legs.any? { |leg| leg["mode"] != "WALK" }
-    
+        has_transit = itin.legs.any? { |leg| leg["mode"] == "BUS" }
+        has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+        has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
+  
         # Adjust trip type
         if all_walk && itin.trip_type == "transit"
           Rails.logger.info("Reclassifying walk-only itinerary as walk.")
@@ -177,6 +179,9 @@ class TripPlanner
         elsif has_transit && itin.trip_type == "walk"
           Rails.logger.info("Reclassifying transit itinerary as transit.")
           itin.trip_type = "transit"
+        elsif (has_flex && has_transit) || (has_flex && all_walk) || (has_flex && has_car_park)
+          Rails.logger.info("Reclassifying mixed itinerary as paratransit_mixed.")
+          itin.trip_type = "paratransit_mixed"
         end
       else
         Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
@@ -380,7 +385,7 @@ class TripPlanner
     all_itineraries = (router_itineraries + non_gtfs_itineraries).compact
     Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
     all_itineraries
-  end 
+  end
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
   def build_taxi_itineraries
