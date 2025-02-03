@@ -282,6 +282,7 @@ class OTPAmbassador
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
+        leg['serviceFullLogoUrl'] = svc.full_logo_url(nil)
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')
