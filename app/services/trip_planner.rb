@@ -180,7 +180,7 @@ class TripPlanner
         elsif has_transit && itin.trip_type == "walk"
           Rails.logger.info("Reclassifying transit itinerary as transit.")
           itin.trip_type = "transit"
-        elsif (has_flex && has_transit) || (has_flex && has_walk) || (has_flex && has_car_park)
+        elsif (has_flex && has_transit) || (has_flex && has_car_park)
           Rails.logger.info("Reclassifying mixed itinerary as paratransit_mixed.")
           itin.trip_type = "paratransit_mixed"
         end
