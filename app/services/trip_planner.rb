@@ -341,7 +341,7 @@ class TripPlanner
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_car_park = itinerary.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
   
-      if (has_paratransit && has_transit) || (has_paratransit && has_walk) || (has_paratransit && has_car_park)
+      if (has_paratransit && has_transit) || (has_paratransit && has_car_park)
         itinerary.trip_type = "paratransit_mixed"
         if has_walk
           itinerary.walk_time ||= itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum do |leg|
