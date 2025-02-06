@@ -340,6 +340,10 @@ class TripPlanner
       has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_car_park = itinerary.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
+
+      if has_paratransit
+        itinerary.legs ||= itin.legs
+      end
   
       if (has_paratransit && has_transit) || (has_paratransit && has_car_park)
         itinerary.trip_type = "paratransit_mixed"
