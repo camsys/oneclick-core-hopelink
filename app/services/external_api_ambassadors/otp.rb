@@ -142,12 +142,13 @@ module OTP
     
       {
         query: <<-GRAPHQL,
-          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!) {
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!, $arriveBy: Boolean!) {
             plan(
               from: { lat: $fromLat, lon: $fromLon }
               to: { lat: $toLat, lon: $toLon }
               date: $date
               time: $time
+              arriveBy: $arriveBy
               transportModes: [#{formatted_modes}]
               numItineraries: #{num_itineraries}
               walkSpeed: #{walk_speed}
@@ -243,9 +244,10 @@ module OTP
           toLat: to[0].to_f,
           toLon: to[1].to_f,
           date: trip_datetime.strftime("%Y-%m-%d"),
-          time: trip_datetime.strftime("%H:%M")
+          time: trip_datetime.strftime("%H:%M"),
+          arriveBy: arrive_by 
         }
-      }      
+      }
     end
 
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
