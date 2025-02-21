@@ -104,13 +104,13 @@ module OTP
     end
 
     def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
-      arrive_by = options[:arrive_by].nil? ? true : options[:arrive_by] 
+      arrive_by = options[:arrive_by].nil? ? false : options[:arrive_by]
       walk_speed = options[:walk_speed] || 3.0 # in m/s
       max_walk_distance = options[:max_walk_distance] || 2 * 1609.34 # in meters
       max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
       bike_reluctance = options[:bike_reluctance] || Config.bike_reluctance
-
+    
       # Determine number of itineraries for the transport mode
       num_itineraries = transport_modes.map do |mode|
         if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
@@ -140,18 +140,15 @@ module OTP
         end
       end.join(", ")
     
-      # Only include arriveBy if arrive_by is true
-      arrive_by_variable = arrive_by ? ", arriveBy: $arriveBy" : ""
-    
       {
         query: <<-GRAPHQL,
-          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!#{arrive_by_variable}) {
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!, $arriveBy: Boolean!) {
             plan(
               from: { lat: $fromLat, lon: $fromLon }
               to: { lat: $toLat, lon: $toLon }
               date: $date
               time: $time
-              #{'arriveBy: $arriveBy' if arrive_by}
+              arriveBy: $arriveBy
               transportModes: [#{formatted_modes}]
               numItineraries: #{num_itineraries}
               walkSpeed: #{walk_speed}
