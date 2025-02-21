@@ -20,7 +20,7 @@ module OTP
     # Send it a list or array of request hashes.
     def multi_plan(*requests)
       requests = requests.flatten.uniq { |req| req[:label] } # Discard duplicate labels
-    
+      
       bundler = HTTPRequestBundler.new
     
       # Add all requests to the bundler, iterating over request types
@@ -33,11 +33,13 @@ module OTP
     
         request_types.each do |type, type_options|
           transport_modes = type_options[:modes] # Modes for this trip type
+          arrive_by = request[:arrive_by].nil? ? false : request[:arrive_by] 
           body = build_graphql_body(
             request[:from],
             request[:to],
             request[:trip_time],
-            transport_modes
+            transport_modes,
+            arrive_by: arrive_by
           )
           url = "#{@base_url}/otp/routers/default/index/graphql"
     
@@ -52,36 +54,31 @@ module OTP
       bundler.responses
     end
     
-    def plan(from, to, trip_datetime, arrive_by = true, transport_modes = nil, options = {})
-      # Default modes based on options or transport_modes
-      transport_modes ||= determine_default_modes(options) # Logic to get default modes
-
-      # GraphQL endpoint
+    def plan(from, to, trip_datetime, arrive_by=true, transport_modes = nil, options = {})
+      transport_modes ||= determine_default_modes(options)
+    
+      body = build_graphql_body(from, to, trip_datetime, transport_modes, arrive_by: arrive_by)
+    
       url = "#{@base_url}/index/graphql"
-
+    
       Rails.logger.info("OTP Request: #{from} to #{to} at #{trip_datetime} with modes #{transport_modes}")
       Rails.logger.info("Url: #{url}")
-
-      # Build GraphQL body
-      body = build_graphql_body(from, to, trip_datetime, transport_modes)
-      
+    
       headers = {
         'Content-Type' => 'application/json',
         'x-user-email' => '1-click@camsys.com',
         'x-user-token' => 'sRRTZ3BV3tmms1o4QNk2'
       }
-
-      # Use HTTPRequestBundler for a single request
+    
       bundler = HTTPRequestBundler.new
       bundler.add(:plan_request, url, :post, head: headers, body: body.to_json)
       Rails.logger.info("GraphQL Request: #{body}")
       Rails.logger.info("GraphQL URL: #{url}")
       Rails.logger.info("GraphQL Headers: #{headers}")
       bundler.make_calls
-
-      # Process and parse the response
+    
       response = bundler.response(:plan_request)
-
+    
       response    
     end
 
@@ -249,6 +246,7 @@ module OTP
         }
       }
     end
+  
   
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
     def unpack(response)
