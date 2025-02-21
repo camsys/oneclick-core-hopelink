@@ -54,10 +54,13 @@ module OTP
     end    
     
     def plan(from, to, trip_datetime, arrive_by = true, transport_modes = nil, options = {})
-      transport_modes ||= determine_default_modes(options)
-      
+      # Default modes based on options or transport_modes
+      transport_modes ||= determine_default_modes(options) # Logic to get default modes
+
+      # GraphQL endpoint      
       body = build_graphql_body(from, to, trip_datetime, transport_modes, options.merge(arrive_by: arrive_by))
-      
+
+      # GraphQL endpoint      
       url = "#{@base_url}/index/graphql"
       
       Rails.logger.info("OTP Request: #{from} to #{to} at #{trip_datetime} with modes #{transport_modes}")
@@ -69,14 +72,17 @@ module OTP
         'x-user-token' => 'sRRTZ3BV3tmms1o4QNk2'
       }
       
+      # Use HTTPRequestBundler for a single request
       bundler = HTTPRequestBundler.new
       bundler.add(:plan_request, url, :post, head: headers, body: body.to_json)
       Rails.logger.info("GraphQL Request: #{body}")
       Rails.logger.info("GraphQL URL: #{url}")
       Rails.logger.info("GraphQL Headers: #{headers}")
-      bundler.make_calls
-      
-      bundler.response(:plan_request)
+
+      # Process and parse the response
+      response = bundler.response(:plan_request)
+
+      response    
     end
 
     def determine_request_types(options = {})
@@ -104,7 +110,8 @@ module OTP
       max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
       bike_reluctance = options[:bike_reluctance] || Config.bike_reluctance
-    
+
+      # Determine number of itineraries for the transport mode
       num_itineraries = transport_modes.map do |mode|
         if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
           Config.otp_car_park_quantity
@@ -123,7 +130,8 @@ module OTP
           end
         end
       end.first || Config.otp_itinerary_quantity
-    
+
+      # Format transport modes for GraphQL
       formatted_modes = transport_modes.map do |mode|
         if mode[:qualifier]
           "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
@@ -238,10 +246,10 @@ module OTP
           date: trip_datetime.strftime("%Y-%m-%d"),
           time: trip_datetime.strftime("%H:%M"),
           arriveBy: arrive_by
-        }
+        }   
       }
     end
-  
+
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
     def unpack(response)
       return OTPResponse.new(response)
