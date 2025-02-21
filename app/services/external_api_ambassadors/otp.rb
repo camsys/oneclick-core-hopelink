@@ -19,67 +19,65 @@ module OTP
     # Makes multiple OTP requests in parallel, and returns once they're all done.
     # Send it a list or array of request hashes.
     def multi_plan(*requests)
-      requests = requests.flatten.uniq { |req| req[:label] } # Discard duplicate labels
+      requests = requests.flatten.uniq { |req| req[:label] }
       
       bundler = HTTPRequestBundler.new
-    
-      # Add all requests to the bundler, iterating over request types
+      
       requests.each_with_index do |request, i|
         request_types = determine_request_types(
           allow_flex: request[:options][:allow_flex],
           include_car: request[:options][:include_car],
           include_transit: request[:options][:include_transit]
         )
-    
+        
         request_types.each do |type, type_options|
-          transport_modes = type_options[:modes] # Modes for this trip type
-          arrive_by = request[:arrive_by].nil? ? false : request[:arrive_by] 
+          transport_modes = type_options[:modes]
+          arrive_by = request[:arrive_by].nil? ? false : request[:arrive_by]
           body = build_graphql_body(
             request[:from],
             request[:to],
             request[:trip_time],
             transport_modes,
-            arrive_by: arrive_by
+            arrive_by,
+            request[:options] || {}
           )
           url = "#{@base_url}/otp/routers/default/index/graphql"
-    
+          
           label = "#{request[:label] || "req#{i}"}_#{type}".to_sym
           bundler.add(label, url, :post, head: { 'Content-Type' => 'application/json' }, body: body.to_json)
         end
       end
-    
+      
       bundler.make_calls
-    
-      # Return the parsed responses
+      
       bundler.responses
     end
     
-    def plan(from, to, trip_datetime, arrive_by=true, transport_modes = nil, options = {})
+    
+    def plan(from, to, trip_datetime, arrive_by = true, transport_modes = nil, options = {})
       transport_modes ||= determine_default_modes(options)
-    
-      body = build_graphql_body(from, to, trip_datetime, transport_modes, arrive_by: arrive_by)
-    
+      
+      body = build_graphql_body(from, to, trip_datetime, transport_modes, arrive_by, options)
+      
       url = "#{@base_url}/index/graphql"
-    
+      
       Rails.logger.info("OTP Request: #{from} to #{to} at #{trip_datetime} with modes #{transport_modes}")
       Rails.logger.info("Url: #{url}")
-    
+      
       headers = {
         'Content-Type' => 'application/json',
         'x-user-email' => '1-click@camsys.com',
         'x-user-token' => 'sRRTZ3BV3tmms1o4QNk2'
       }
-    
+      
       bundler = HTTPRequestBundler.new
       bundler.add(:plan_request, url, :post, head: headers, body: body.to_json)
       Rails.logger.info("GraphQL Request: #{body}")
       Rails.logger.info("GraphQL URL: #{url}")
       Rails.logger.info("GraphQL Headers: #{headers}")
       bundler.make_calls
-    
-      response = bundler.response(:plan_request)
-    
-      response    
+      
+      bundler.response(:plan_request)
     end
 
     def determine_request_types(options = {})
@@ -100,14 +98,14 @@ module OTP
       request_types.select { |type, _| options[:allow_flex] || type != :flex }
     end
 
-    def build_graphql_body(from, to, trip_datetime, transport_modes, options = {}, arrive_by)
-      arrive_by = arrive_by.nil? ? true : arrive_by
-      walk_speed = options[:walk_speed] || 3.0 # in m/s
-      max_walk_distance = options[:max_walk_distance] || 2 * 1609.34 # in meters
-      max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
+    def build_graphql_body(from, to, trip_datetime, transport_modes, arrive_by, options = {})
+      # Assume arrive_by is already a boolean
+      walk_speed = options[:walk_speed] || 3.0
+      max_walk_distance = options[:max_walk_distance] || 2 * 1609.34
+      max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
       bike_reluctance = options[:bike_reluctance] || Config.bike_reluctance
-    
+      
       num_itineraries = transport_modes.map do |mode|
         if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
           Config.otp_car_park_quantity
@@ -126,7 +124,7 @@ module OTP
           end
         end
       end.first || Config.otp_itinerary_quantity
-    
+      
       formatted_modes = transport_modes.map do |mode|
         if mode[:qualifier]
           "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
@@ -134,12 +132,10 @@ module OTP
           "{ mode: #{mode[:mode]} }"
         end
       end.join(", ")
-    
-      arrive_by_variable = arrive_by ? ", arriveBy: $arriveBy" : ""
-    
+      
       {
         query: <<-GRAPHQL,
-          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!#{arrive_by_variable}) {
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!, $arriveBy: Boolean!) {
             plan(
               from: { lat: $fromLat, lon: $fromLon }
               to: { lat: $toLat, lon: $toLon }
@@ -151,7 +147,7 @@ module OTP
               maxWalkDistance: #{max_walk_distance}
               walkReluctance: #{walk_reluctance}
               bikeReluctance: #{bike_reluctance}
-              #{'arriveBy: $arriveBy' if arrive_by}
+              arriveBy: $arriveBy
             ) {
               itineraries {
                 startTime
@@ -246,7 +242,6 @@ module OTP
         }
       }
     end
-  
   
     # Wraps a response body in an OTPResponse object for easy inspection and manipulation
     def unpack(response)
