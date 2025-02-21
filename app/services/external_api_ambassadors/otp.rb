@@ -72,7 +72,7 @@ module OTP
         'x-user-email' => '1-click@camsys.com',
         'x-user-token' => 'sRRTZ3BV3tmms1o4QNk2'
       }
-      
+
       # Use HTTPRequestBundler for a single request
       bundler = HTTPRequestBundler.new
       bundler.add(:plan_request, url, :post, head: headers, body: body.to_json)
@@ -131,7 +131,7 @@ module OTP
           end
         end
       end.first || Config.otp_itinerary_quantity
-
+    
       # Format transport modes for GraphQL
       formatted_modes = transport_modes.map do |mode|
         if mode[:qualifier]
