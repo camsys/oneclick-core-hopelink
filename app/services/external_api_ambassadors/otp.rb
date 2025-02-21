@@ -100,8 +100,8 @@ module OTP
       request_types.select { |type, _| options[:allow_flex] || type != :flex }
     end
 
-    def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
-      arrive_by = options[:arrive_by].nil? ? false : options[:arrive_by]
+    def build_graphql_body(from, to, trip_datetime, transport_modes, options = {}, arrive_by)
+      arrive_by = arrive_by.nil? ? true : arrive_by
       walk_speed = options[:walk_speed] || 3.0 # in m/s
       max_walk_distance = options[:max_walk_distance] || 2 * 1609.34 # in meters
       max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
