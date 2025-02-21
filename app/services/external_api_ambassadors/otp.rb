@@ -20,16 +20,17 @@ module OTP
     # Send it a list or array of request hashes.
     def multi_plan(*requests)
       requests = requests.flatten.uniq { |req| req[:label] } # Discard duplicate labels
-      
+    
       bundler = HTTPRequestBundler.new
-      
+
+      # Add all requests to the bundler, iterating over request types
       requests.each_with_index do |request, i|
         request_types = determine_request_types(
           allow_flex: request[:options][:allow_flex],
           include_car: request[:options][:include_car],
           include_transit: request[:options][:include_transit]
         )
-        
+      
         request_types.each do |type, type_options|
           transport_modes = type_options[:modes] # Modes for this trip type
           opts = request[:options] || {}
@@ -42,16 +43,16 @@ module OTP
             opts
           )
           url = "#{@base_url}/otp/routers/default/index/graphql"
-          
+      
           label = "#{request[:label] || "req#{i}"}_#{type}".to_sym
           bundler.add(label, url, :post, head: { 'Content-Type' => 'application/json' }, body: body.to_json)
         end
       end
-      
+    
       bundler.make_calls
       
       bundler.responses
-    end    
+    end
     
     def plan(from, to, trip_datetime, arrive_by = true, transport_modes = nil, options = {})
       # Default modes based on options or transport_modes
