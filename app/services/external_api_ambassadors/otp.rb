@@ -111,7 +111,6 @@ module OTP
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
       bike_reluctance = options[:bike_reluctance] || Config.bike_reluctance
     
-      # Determine number of itineraries for the transport mode
       num_itineraries = transport_modes.map do |mode|
         if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
           Config.otp_car_park_quantity
@@ -131,7 +130,6 @@ module OTP
         end
       end.first || Config.otp_itinerary_quantity
     
-      # Format transport modes for GraphQL
       formatted_modes = transport_modes.map do |mode|
         if mode[:qualifier]
           "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
@@ -140,21 +138,23 @@ module OTP
         end
       end.join(", ")
     
+      arrive_by_variable = arrive_by ? ", arriveBy: $arriveBy" : ""
+    
       {
         query: <<-GRAPHQL,
-          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!, $arriveBy: Boolean!) {
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!#{arrive_by_variable}) {
             plan(
               from: { lat: $fromLat, lon: $fromLon }
               to: { lat: $toLat, lon: $toLon }
               date: $date
               time: $time
-              arriveBy: $arriveBy
               transportModes: [#{formatted_modes}]
               numItineraries: #{num_itineraries}
               walkSpeed: #{walk_speed}
               maxWalkDistance: #{max_walk_distance}
               walkReluctance: #{walk_reluctance}
               bikeReluctance: #{bike_reluctance}
+              #{'arriveBy: $arriveBy' if arrive_by}
             ) {
               itineraries {
                 startTime
@@ -245,7 +245,7 @@ module OTP
           toLon: to[1].to_f,
           date: trip_datetime.strftime("%Y-%m-%d"),
           time: trip_datetime.strftime("%H:%M"),
-          arriveBy: arrive_by 
+          arriveBy: arrive_by
         }
       }
     end
