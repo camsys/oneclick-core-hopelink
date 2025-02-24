@@ -206,6 +206,13 @@ module OTP
                     lon
                     arrivalTime
                   }
+                  intermediateStops {
+                    name
+                    lat
+                    lon
+                    departureTime
+                    arrivalTime
+                  }
                   fareProducts {
                     id
                     product {
