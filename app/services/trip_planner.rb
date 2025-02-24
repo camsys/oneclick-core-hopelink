@@ -276,8 +276,12 @@ class TripPlanner
   # # # Builds transit itineraries, using OTP by default
   def build_transit_itineraries
     Rails.logger.info("Building transit itineraries...")
-    build_fixed_itineraries :transit
-  end
+    itineraries = build_fixed_itineraries(:transit)
+    unless @trip_types.include?(:walk)
+      itineraries.reject! { |itin| itin.legs.all? { |leg| leg["mode"] == "WALK" } }
+    end
+    itineraries
+  end  
 
   def build_car_park_itineraries
     build_fixed_itineraries :car_park
