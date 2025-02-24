@@ -210,8 +210,6 @@ module OTP
                     name
                     lat
                     lon
-                    departureTime
-                    arrivalTime
                   }
                   fareProducts {
                     id
