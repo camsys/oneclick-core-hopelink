@@ -352,13 +352,6 @@ class TripPlanner
         Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
       end
     
-      # Mark legs with mode 'FLEX_ACCESS' so the UI picks up the flex icon
-      itinerary.legs.each do |leg|
-        if leg["mode"] == "FLEX_ACCESS"
-          leg["isFlex"] = true
-        end
-      end
-    
       itinerary
     end
     
