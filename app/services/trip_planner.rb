@@ -308,16 +308,16 @@ class TripPlanner
     
     # OTP-based itineraries that have a service with a type of 'Paratransit'
     otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? && itin.service.type == 'Paratransit' }
-  
+    
     Rails.logger.info("OTP itineraries count: #{otp_itineraries.inspect}")
-  
+    
     # Filter out transit-only itineraries
     otp_itineraries.reject! do |itin|
       has_paratransit = itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
       has_transit = itin.legs.any? { |leg| leg["serviceType"] == "Transit" }
       !has_paratransit && has_transit
     end
-  
+    
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.map do |itin|
       # Find or initialize an itinerary for the service
@@ -330,7 +330,7 @@ class TripPlanner
                             )
       
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
-  
+    
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
         assistant: @options[:assistant],
@@ -339,16 +339,16 @@ class TripPlanner
         transit_time: calculated_duration,
         legs: itin.legs
       })
-  
-      has_paratransit = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+    
+      has_paratransit = itinerary.legs.any? { |leg| leg["mode"].to_s.downcase.include?("flex") }
       has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_car_park = itinerary.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
-
+    
       if has_paratransit
         itinerary.legs ||= itin.legs
       end
-  
+    
       if (has_paratransit && has_transit) || (has_paratransit && has_car_park)
         itinerary.trip_type = "paratransit_mixed"
         if has_walk
@@ -360,7 +360,14 @@ class TripPlanner
         end
         Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
       end
-  
+    
+      # Mark legs with mode 'flex_access' so the UI picks up the flex icon
+      itinerary.legs.each do |leg|
+        if leg["mode"].to_s.downcase == "flex_access"
+          leg["isFlex"] = true
+        end
+      end
+    
       itinerary
     end
     
