@@ -340,11 +340,11 @@ class TripPlanner
         legs: itin.legs
       })
     
-      has_paratransit = itinerary.legs.any? { |leg| leg["mode"].to_s.downcase.include?("flex") }
+      has_paratransit = itinerary.legs.any? { |leg| leg["mode"].to_s.include?("FLEX") }
       has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_car_park = itinerary.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
-    
+  
       if has_paratransit
         itinerary.legs ||= itin.legs
       end
@@ -402,6 +402,7 @@ class TripPlanner
     Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
     all_itineraries
   end
+  
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
   def build_taxi_itineraries
