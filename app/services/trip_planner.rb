@@ -340,11 +340,11 @@ class TripPlanner
         legs: itin.legs
       })
     
-      has_paratransit = itinerary.legs.any? { |leg| leg["mode"].to_s.include?("FLEX") }
+      has_paratransit = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
       has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_car_park = itinerary.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
-  
+    
       if has_paratransit
         itinerary.legs ||= itin.legs
       end
@@ -361,11 +361,9 @@ class TripPlanner
         Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
       end
     
-      # Mark legs with mode 'flex_access' so the UI picks up the flex icon
+      # Mark legs with mode 'FLEX_ACCESS' so the UI picks up the flex icon
       itinerary.legs.each do |leg|
-        if leg["mode"].to_s.downcase == "flex_access"
-          leg["isFlex"] = true
-        end
+        leg["isFlex"] = true if leg["mode"] == "FLEX_ACCESS"
       end
     
       itinerary
@@ -402,6 +400,7 @@ class TripPlanner
     Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
     all_itineraries
   end
+  
   
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
