@@ -288,6 +288,19 @@ class TripPlanner
       itineraries.reject! { |itin| itin.legs.all? { |leg| leg["mode"] == "WALK" } }
     end
     itineraries
+
+    has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+    has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
+    has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
+    has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
+    
+    if has_flex && has_walk && has_other_mode
+      itinerary.trip_type = "paratransit_mixed"
+      Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and another mode—setting trip type to paratransit_mixed")
+    elsif has_flex && has_walk
+      itinerary.trip_type = "paratransit"
+      Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
+    end      
   end  
 
   def build_car_park_itineraries
@@ -350,9 +363,6 @@ class TripPlanner
       has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
-      
-      has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
-      has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
       
       if has_flex && has_walk && has_other_mode
