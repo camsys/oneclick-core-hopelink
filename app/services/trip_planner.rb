@@ -180,7 +180,7 @@ class TripPlanner
         elsif has_transit && itin.trip_type == "walk"
           Rails.logger.info("Reclassifying transit itinerary as transit.")
           itin.trip_type = "transit"
-        elsif (has_flex && has_transit) || (has_flex && has_car_park) || (has_flex && has_walk)
+        elsif (has_flex && has_transit) || (has_flex && has_car_park)
           Rails.logger.info("Reclassifying mixed itinerary as paratransit_mixed.")
           itin.trip_type = "paratransit_mixed"
         end
@@ -340,16 +340,16 @@ class TripPlanner
         legs: itin.legs
       })
     
-      if itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" } && itinerary.legs.size > 1
+      has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+      has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
+      has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
+      
+      if has_flex && has_walk && has_transit
         itinerary.trip_type = "paratransit_mixed"
-        if itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
-          itinerary.walk_time ||= itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum do |leg|
-            start_time = leg["from"]["departureTime"]
-            end_time = leg["to"]["arrivalTime"]
-            (end_time - start_time) / 1000
-          end
-        end
-        Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
+        Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and BUS—setting trip type to paratransit_mixed")
+      elsif has_flex && has_walk
+        itinerary.trip_type = "paratransit"
+        Rails.logger.info("Itinerary has FLEX_ACCESS and WALK only—setting trip type to paratransit")
       end
     
       itinerary
