@@ -154,7 +154,7 @@ class TripPlanner
   # Builds itineraries for all trip types
   def build_all_itineraries
     Rails.logger.info("Building all itineraries for trip types: #{@trip_types}")
-    
+  
     # Log the trip types being processed to ensure they are correct and unique
     @trip_types.each { |t| Rails.logger.info("Processing trip type: #{t}") }
   
@@ -174,15 +174,21 @@ class TripPlanner
         has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
   
         # Adjust trip type
-        if all_walk && itin.trip_type == "transit"
+        if has_flex && has_walk && has_transit
+          Rails.logger.info("Reclassifying itinerary with FLEX_ACCESS, WALK, and BUS—setting trip type to paratransit_mixed")
+          itin.trip_type = "paratransit_mixed"
+        elsif has_flex && has_walk
+          Rails.logger.info("Reclassifying itinerary with FLEX_ACCESS and WALK—setting trip type to paratransit_mixed")
+          itin.trip_type = "paratransit_mixed"
+        elsif has_walk && itin.trip_type == "paratransit"
+          Rails.logger.info("Reclassifying walk-only itinerary as paratransit.")
+          itin.trip_type = "paratransit"
+        elsif has_transit && itin.trip_type == "walk"
+          Rails.logger.info("Reclassifying walk-only itinerary as transit.")
+          itin.trip_type = "transit"
+        elsif all_walk && itin.trip_type == "transit"
           Rails.logger.info("Reclassifying walk-only itinerary as walk.")
           itin.trip_type = "walk"
-        elsif has_transit && itin.trip_type == "walk"
-          Rails.logger.info("Reclassifying transit itinerary as transit.")
-          itin.trip_type = "transit"
-        elsif (has_flex && has_transit) || (has_flex && has_car_park)
-          Rails.logger.info("Reclassifying mixed itinerary as paratransit_mixed.")
-          itin.trip_type = "paratransit_mixed"
         end
       else
         Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
@@ -209,6 +215,7 @@ class TripPlanner
   
     Rails.logger.info("All itineraries successfully processed for trip: #{@trip.id}")
   end
+  
 
   # Additional sanity checks can be applied here.
   def filter_itineraries
