@@ -260,6 +260,7 @@ class TripPlanner
         end
       end
   
+      # Reclassification logic based on itinerary legs (move from `build_transit_itineraries`)
       if itin.legs&.any?
         all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
         has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
@@ -267,10 +268,10 @@ class TripPlanner
         has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
         has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
   
-        # Adjust trip type based on legs
-        if has_flex && has_walk && has_transit
+        if (has_walk && itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }) &&
+           itin.legs.any? { |leg| !["WALK", "PARATRANSIT"].include?(leg["mode"]) }
           itin.trip_type = "paratransit_mixed"
-          Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and BUS—setting trip type to paratransit_mixed")
+          Rails.logger.info("Itinerary has WALK, PARATRANSIT, and another mode—setting trip type to paratransit_mixed")
         elsif has_flex && has_walk
           itin.trip_type = "paratransit"
           Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
@@ -288,13 +289,14 @@ class TripPlanner
         Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
       end
   
-      itin
+      itin 
     end
     itineraries.delete(nil)
   
     @trip.itineraries = itineraries
     Rails.logger.info("Filtered itineraries count: #{@trip.itineraries.count}")
   end
+
 
   # Calls the requisite trip_type itineraries method
   def build_itineraries(trip_type)
