@@ -220,50 +220,78 @@ class TripPlanner
   # Additional sanity checks can be applied here.
   def filter_itineraries
     Rails.logger.info("Filtering itineraries for trip #{@trip.id}. Initial count: #{@trip.itineraries.count}")
-
+  
     walk_seen = false
     max_walk_minutes = Config.max_walk_minutes
     max_walk_distance = Config.max_walk_distance
     itineraries = @trip.itineraries.map do |itin|
-
-      ## Test: Make sure we never exceed the maximium walk time
-      if itin.walk_time and itin.walk_time > max_walk_minutes*60
+  
+      ## Test: Make sure we never exceed the maximum walk time
+      if itin.walk_time && itin.walk_time > max_walk_minutes * 60
         next
       end
-
+  
       ## Test: Make sure that we only ever return 1 walk trip
-      if itin.walk_time and itin.duration and itin.walk_time == itin.duration 
+      if itin.walk_time && itin.duration && itin.walk_time == itin.duration
         if walk_seen
-          next 
-        else 
-          walk_seen = true 
+          next
+        else
+          walk_seen = true
         end
       end
-
+  
       # Test: Filter out walk-only itineraries when walking is deselected
       if !@trip.itineraries.map(&:trip_type).include?('walk') && itin.trip_type == 'transit' && 
-        itin.legs.all? { |leg| leg['mode'] == 'WALK' } && 
-        itin.walk_distance >= itin.legs.first['distance']
-      next
-      end
-
-      # Test: Filter out itineraries where user has de-selected walking as a trip type, kept transit, and any walking leg in the transit trip exceeds the maximum walk distance
-      if !@trip.itineraries.map(&:trip_type).include?('walk') && itin.trip_type == 'transit' && itin.legs.detect { |leg| leg['mode'] == 'WALK' && leg["distance"] > max_walk_distance }
+         itin.legs.all? { |leg| leg['mode'] == 'WALK' } && itin.walk_distance >= itin.legs.first['distance']
         next
       end
-
+  
+      # Test: Filter out itineraries where user has deselected walking as a trip type,
+      # kept transit, and any walking leg in the transit trip exceeds the maximum walk distance
+      if !@trip.itineraries.map(&:trip_type).include?('walk') && itin.trip_type == 'transit' &&
+         itin.legs.detect { |leg| leg['mode'] == 'WALK' && leg["distance"] > max_walk_distance }
+        next
+      end
+  
       # Test: Only apply max_walk_distance if walking is not selected as a trip type
       if !@trip.itineraries.map(&:trip_type).include?('walk')
         if itin.trip_type == 'transit' && itin.legs.any? { |leg| leg['mode'] == 'WALK' && leg["distance"] > max_walk_distance }
           next
         end
       end
-
-      ## We've passed all the tests
-      itin 
+  
+      if itin.legs&.any?
+        all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
+        has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
+        has_transit = itin.legs.any? { |leg| leg["mode"] == "BUS" }
+        has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+        has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
+  
+        # Adjust trip type based on legs
+        if has_flex && has_walk && has_transit
+          itin.trip_type = "paratransit_mixed"
+          Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and BUS—setting trip type to paratransit_mixed")
+        elsif has_flex && has_walk
+          itin.trip_type = "paratransit"
+          Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
+        elsif has_walk && itin.trip_type == "paratransit"
+          itin.trip_type = "paratransit"
+          Rails.logger.info("Reclassifying walk-only itinerary as paratransit.")
+        elsif has_transit && itin.trip_type == "walk"
+          itin.trip_type = "transit"
+          Rails.logger.info("Reclassifying walk-only itinerary as transit.")
+        elsif all_walk && itin.trip_type == "transit"
+          itin.trip_type = "walk"
+          Rails.logger.info("Reclassifying walk-only itinerary as walk.")
+        end
+      else
+        Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
+      end
+  
+      itin
     end
     itineraries.delete(nil)
-
+  
     @trip.itineraries = itineraries
     Rails.logger.info("Filtered itineraries count: #{@trip.itineraries.count}")
   end
@@ -287,20 +315,6 @@ class TripPlanner
     unless @trip_types.include?(:walk)
       itineraries.reject! { |itin| itin.legs.all? { |leg| leg["mode"] == "WALK" } }
     end
-
-    itineraries.each do |itin|
-      has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
-      has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
-      has_other_mode = itin.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
-      
-      if has_flex && has_walk && has_other_mode
-        itin.trip_type = "paratransit_mixed"
-        Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and another mode—setting trip type to paratransit_mixed")
-      elsif has_flex && has_walk
-        itin.trip_type = "paratransit"
-        Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
-      end  
-    end    
     
     itineraries
 
