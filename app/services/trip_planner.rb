@@ -269,7 +269,7 @@ class TripPlanner
         has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
   
         if (has_walk && itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }) &&
-           itin.legs.any? { |leg| !["WALK", "PARATRANSIT"].include?(leg["mode"]) }
+           itin.legs.any? { |leg| !["WALK", "FLEX_ACCESS"].include?(leg["mode"]) }
           itin.trip_type = "paratransit_mixed"
           Rails.logger.info("Itinerary has WALK, PARATRANSIT, and another mode—setting trip type to paratransit_mixed")
         elsif has_flex && has_walk
