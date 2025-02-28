@@ -168,8 +168,11 @@ class TripPlanner
     trip_itineraries.each do |itin|
       if itin.legs&.any?
         all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
-        has_transit = itin.legs.any? { |leg| leg["mode"] != "WALK" }
-    
+        has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
+        has_transit = itin.legs.any? { |leg| leg["mode"] == "BUS" }
+        has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
+        has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
+  
         # Adjust trip type
         if all_walk && itin.trip_type == "transit"
           Rails.logger.info("Reclassifying walk-only itinerary as walk.")
@@ -177,6 +180,9 @@ class TripPlanner
         elsif has_transit && itin.trip_type == "walk"
           Rails.logger.info("Reclassifying transit itinerary as transit.")
           itin.trip_type = "transit"
+        elsif (has_flex && has_transit) || (has_flex && has_car_park) || (has_flex && has_walk)
+          Rails.logger.info("Reclassifying mixed itinerary as paratransit_mixed.")
+          itin.trip_type = "paratransit_mixed"
         end
       else
         Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
@@ -198,7 +204,6 @@ class TripPlanner
         itin.save!
       end
   
-      Rails.logger.info("Adding new itineraries to trip: #{new_itineraries.map(&:inspect)}")
       @trip.itineraries += new_itineraries
     end
   
@@ -271,8 +276,12 @@ class TripPlanner
   # # # Builds transit itineraries, using OTP by default
   def build_transit_itineraries
     Rails.logger.info("Building transit itineraries...")
-    build_fixed_itineraries :transit
-  end
+    itineraries = build_fixed_itineraries(:transit)
+    unless @trip_types.include?(:walk)
+      itineraries.reject! { |itin| itin.legs.all? { |leg| leg["mode"] == "WALK" } }
+    end
+    itineraries
+  end  
 
   def build_car_park_itineraries
     build_fixed_itineraries :car_park
@@ -294,15 +303,23 @@ class TripPlanner
   # Builds paratransit itineraries for each service, populates transit_time based on OTP response
   def build_paratransit_itineraries
     Rails.logger.info("Starting build_paratransit_itineraries...")
-  
+    
     return [] unless @available_services[:paratransit].present?
-  
-    # OTP-based itineraries
-    otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? }
-  
+    
+    # OTP-based itineraries that have a service with a type of 'Paratransit'
+    otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? && itin.service.type == 'Paratransit' }
+    
+    Rails.logger.info("OTP itineraries count: #{otp_itineraries.inspect}")
+    
+    # Filter out transit-only itineraries
+    otp_itineraries.reject! do |itin|
+      has_paratransit = itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
+      has_transit = itin.legs.any? { |leg| leg["serviceType"] == "Transit" }
+      !has_paratransit && has_transit
+    end
+    
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.map do |itin|
-  
       # Find or initialize an itinerary for the service
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
@@ -311,26 +328,39 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
+      
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
-  
+    
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: calculated_duration
+        transit_time: calculated_duration,
+        legs: itin.legs
       })
-  
+    
+      if itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" } && itinerary.legs.size > 1
+        itinerary.trip_type = "paratransit_mixed"
+        if itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
+          itinerary.walk_time ||= itinerary.legs.select { |leg| leg["mode"] == "WALK" }.sum do |leg|
+            start_time = leg["from"]["departureTime"]
+            end_time = leg["to"]["arrivalTime"]
+            (end_time - start_time) / 1000
+          end
+        end
+        Rails.logger.info("Mixed transit and paratransit services detected, changing trip type to paratransit_mixed")
+      end
+    
       itinerary
     end
-  
+    
     # Services that passed accommodations but do not have a gtfs_agency_id
     non_gtfs_services = @available_services[:paratransit].where(gtfs_agency_id: [nil, ""])
-  
+    
     non_gtfs_itineraries = non_gtfs_services.map do |svc|
       Rails.logger.info("Processing non-GTFS service ID: #{svc.id}")
-    
-      # Find or initialize an itinerary for the service
+      
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
                             .find_or_initialize_by(
@@ -338,26 +368,24 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-    
-      # Calculate transit time
+      
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
-    
-      # Assign attributes for the itinerary
+      
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: calculated_duration
+        transit_time: calculated_duration,
       })
-    
+      
       itinerary
-    end    
-  
+    end
+    
     # Combine and return both sets of itineraries
     all_itineraries = (router_itineraries + non_gtfs_itineraries).compact
     Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
     all_itineraries
-  end  
+  end
   
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
