@@ -287,7 +287,6 @@ class TripPlanner
     unless @trip_types.include?(:walk)
       itineraries.reject! { |itin| itin.legs.all? { |leg| leg["mode"] == "WALK" } }
     end
-    itineraries
 
     has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
     has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
@@ -300,7 +299,10 @@ class TripPlanner
     elsif has_flex && has_walk
       itinerary.trip_type = "paratransit"
       Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
-    end      
+    end  
+    
+    itineraries
+
   end  
 
   def build_car_park_itineraries
