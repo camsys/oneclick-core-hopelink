@@ -7,7 +7,7 @@ class OTPAmbassador
   TRIP_TYPE_DICTIONARY = {
     transit:      { label: :otp_transit, modes: "TRANSIT,WALK" },
     paratransit:  { label: :otp_paratransit, modes: "CAR" },
-    car_park:     { label: :otp_car_park, modes: "" },
+    car_park:     { label: :otp_car_park, modes: "CAR,TRANSIT,WALK" },
     taxi:         { label: :otp_car, modes: "CAR" },
     walk:         { label: :otp_walk, modes: "WALK" },
     car:          { label: :otp_car, modes: "CAR" },
@@ -25,7 +25,7 @@ class OTPAmbassador
       { mode: "TRANSIT" },
       { mode: "WALK" }
     ] },
-    car_park:     { label: :otp_car_park, modes: "CAR_PARK,TRANSIT,WALK" },
+    car_park:     { label: :otp_car_park, modes: [{ mode: "CAR", qualifier: "PARK" }, { mode: "TRANSIT" }, { mode: "WALK" }] },
     taxi:         { label: :otp_car, modes: "CAR" },
     walk:         { label: :otp_walk, modes: "WALK" },
     car:          { label: :otp_car, modes: "CAR" },
@@ -86,9 +86,7 @@ class OTPAmbassador
     end
   
     itineraries = ensure_response(trip_type)&.itineraries || []
-    
-    Rails.logger.info("Raw itineraries fetched for #{trip_type}: #{itineraries.inspect}")
-    
+        
     itineraries.map { |i| convert_itinerary(i, trip_type) }.compact
   end
   
@@ -118,6 +116,8 @@ class OTPAmbassador
       otp_transit: Config.otp_transit_quantity,
       otp_paratransit: Config.otp_paratransit_quantity
     }
+
+    Rails.logger.info("Max itineraries for #{trip_type_label}: #{quantity_config[trip_type_label]}")
 
     quantity_config[trip_type_label]
   end
@@ -163,6 +163,8 @@ class OTPAmbassador
   # Formats the trip as an OTP request based on trip_type
   def format_trip_as_otp_request(trip_type)
     num_itineraries = max_itineraries(trip_type[:label])
+    Rails.logger.info("Formatting trip as OTP request for trip_type: #{trip_type}")
+    Rails.logger.info("Max itineraries for #{trip_type[:label]}: #{num_itineraries}")
     {
       from: [@trip.origin.lat, @trip.origin.lng],
       to: [@trip.destination.lat, @trip.destination.lng],
@@ -179,24 +181,22 @@ class OTPAmbassador
   # Fetches responses from the HTTP Request Bundler, and packages
   # them in an OTPResponse object
   def ensure_response(trip_type)
-    @responses ||= {} # Initialize the cache
-  
-    # Return the cached response if it exists
+    @responses ||= {}
     return @responses[trip_type] if @responses.key?(trip_type)
   
     Rails.logger.info("Ensuring response for trip_type: #{trip_type}")
-    Rails.logger.info("Checking trip_type_dictionary for trip_type: #{trip_type}")
   
-    trip_type_label = @trip_type_dictionary[trip_type][:label]
-    modes = if @trip_type_dictionary[trip_type][:modes].is_a?(String)
-              @trip_type_dictionary[trip_type][:modes].split(',').map { |mode| { mode: mode.strip } }
-            elsif @trip_type_dictionary[trip_type][:modes].is_a?(Array)
-              @trip_type_dictionary[trip_type][:modes]
+    # Fetch trip type configuration
+    trip_type_config = @trip_type_dictionary[trip_type]
+    modes = if trip_type_config[:modes].is_a?(Array)
+              trip_type_config[:modes]
             else
-              []
+              trip_type_config[:modes].split(",").map { |mode| { mode: mode.strip } }
             end
   
-    # Call the `plan` method from OTPService
+    Rails.logger.info("Modes for #{trip_type}: #{modes.inspect}")
+  
+    # Query OTP
     response = @otp.plan(
       [@trip.origin.lat, @trip.origin.lng],
       [@trip.destination.lat, @trip.destination.lng],
@@ -208,7 +208,7 @@ class OTPAmbassador
     Rails.logger.info("Plan response for trip_type #{trip_type}: #{response.inspect}")
   
     # Cache and return the response
-    if response['data'] && response['data']['plan'] && response['data']['plan']['itineraries']
+    if response.dig('data', 'plan', 'itineraries')
       @responses[trip_type] = OTPResponse.new(response)
     else
       Rails.logger.warn("No valid itineraries in response: #{response.inspect}")
@@ -223,6 +223,30 @@ class OTPAmbassador
     Rails.logger.info("Trip Type: #{trip_type}")
     associate_legs_with_services(otp_itin)
   
+    otp_itin["legs"].each do |leg|
+  
+      # Extract GTFS agency ID and name
+      gtfs_agency_id = leg.dig("route", "agency", "gtfsId")
+      gtfs_agency_name = leg.dig("route", "agency", "name")
+  
+      # Match GTFS agency ID and name to a service
+      svc = Service.find_by(gtfs_agency_id: gtfs_agency_id)
+      if svc
+        Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
+        
+        # Update leg mode based on service type
+        if svc.type == "Paratransit" && leg["mode"] == "BUS"
+          leg["mode"] = "FLEX_ACCESS"
+          Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
+        end
+      else
+        Rails.logger.info("No matching service found for GTFS agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
+      end
+  
+      # Update route name for logging
+      leg["route"] = leg.dig("route", "shortName") || leg.dig("route", "longName")
+      Rails.logger.info("Route: #{leg["route"]}") unless leg["route"].nil?
+    end
   
     service_id = otp_itin["legs"].detect { |leg| leg['serviceId'].present? }&.fetch('serviceId', nil)
     start_time = otp_itin["legs"].first["from"]["departureTime"]
@@ -248,60 +272,62 @@ class OTPAmbassador
 
   # Modifies OTP Itin's legs, inserting information about 1-Click services
   def associate_legs_with_services(otp_itin)
-  
-    itinerary = otp_itin.is_a?(Hash) ? otp_itin['itinerary'] : otp_itin.itinerary
-  
-    unless itinerary
-      return
-    end
-  
     otp_itin.legs ||= []
     otp_itin.legs = otp_itin.legs.map do |leg|
       svc = get_associated_service_for(leg)
   
-      # Assign service details if a service is found
       if svc
+        # Populate fields from permitted service
         leg['serviceId'] = svc.id
         leg['serviceName'] = svc.name
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
+        leg['serviceFullLogoUrl'] = svc.full_logo_url(nil)
       else
-        leg['serviceName'] = leg['agencyName'] || leg['agencyId']
+        # Fallback to agency information
+        agency = leg.dig('route', 'agency')
       end
   
       leg
     end
   end
-  
 
   def get_associated_service_for(leg)
     leg ||= {}
   
-    # Extract GTFS agency ID and name
-    gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId')
-    gtfs_agency_name = leg.dig('route', 'agency', 'name')
+    # Extract GTFS agency ID and name from multiple possible locations
+    gtfs_agency_id = leg.dig('route', 'agency', 'gtfsId') || leg['agencyId']
+    gtfs_agency_name = leg.dig('route', 'agency', 'name') || leg['agencyName']
   
-    Rails.logger.info "GTFS Agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}"
+    # Skip logging and processing for legs without an agency ID or name
+    return nil if gtfs_agency_id.nil? && gtfs_agency_name.nil?
   
-    # Attempt to find service by GTFS ID
+    Rails.logger.info("======================================================")
+    Rails.logger.info("OTP Option | Name: #{gtfs_agency_name}, GTFS Agency ID: #{gtfs_agency_id}")
+  
+    # Attempt to find the service by GTFS ID first
     svc = Service.find_by(gtfs_agency_id: gtfs_agency_id) if gtfs_agency_id
   
-    # Fallback to find by GTFS Name or NULL GTFS Agency
-    if svc.nil? && gtfs_agency_name
-      svc = Service.where('LOWER(name) = ?', gtfs_agency_name.downcase).first
-    elsif svc.nil?
-      svc = Service.where(gtfs_agency_id: nil).first
-    end
+    # Fallback to GTFS Name or services without GTFS ID if needed
+    svc ||= Service.where('LOWER(name) = ?', gtfs_agency_name&.downcase).first if gtfs_agency_name
+    svc ||= Service.where(gtfs_agency_id: nil).first
   
-    # Ensure service is permitted
     if svc && @services.any? { |s| s.id == svc.id }
-      Rails.logger.info "Permitted service: #{svc.inspect}"
+      Rails.logger.info("[SUCCESS] Permitted service found in 1click: #{svc.name}, GTFS ID: #{svc.gtfs_agency_id}, service type: #{svc.type}")
       svc
     else
-      Rails.logger.warn "Service #{svc.inspect} not permitted. Skipping."
+      reason = if gtfs_agency_id && !Service.exists?(gtfs_agency_id: gtfs_agency_id)
+                 "No matching GTFS ID found in the database."
+               elsif gtfs_agency_name && !Service.exists?(['LOWER(name) = ?', gtfs_agency_name.downcase])
+                 "No matching service name found in the database."
+               else
+                 "Service not permitted by the current scope."
+               end
+      Rails.logger.warn("[FAILED] Service skipped: #{reason}")
       nil
     end
-  end
+  end  
+  
 
   # OTP Lists Car and Walk as having 0 transit time
   def get_transit_time(otp_itin, trip_type)

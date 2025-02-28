@@ -25,15 +25,22 @@ module OTP
     
       # Add all requests to the bundler, iterating over request types
       requests.each_with_index do |request, i|
-        request_types = determine_request_types(request[:options]) # Existing logic for determining trip types
-    
+        request_types = determine_request_types(
+          allow_flex: request[:options][:allow_flex],
+          include_car: request[:options][:include_car],
+          include_transit: request[:options][:include_transit]
+        )
+      
         request_types.each do |type, type_options|
           transport_modes = type_options[:modes] # Modes for this trip type
+          opts = request[:options] || {}
+          opts[:arrive_by] = request[:arrive_by].nil? ? false : request[:arrive_by]
           body = build_graphql_body(
             request[:from],
             request[:to],
             request[:trip_time],
-            transport_modes
+            transport_modes,
+            opts
           )
           url = "#{@base_url}/otp/routers/default/index/graphql"
     
@@ -52,14 +59,14 @@ module OTP
       # Default modes based on options or transport_modes
       transport_modes ||= determine_default_modes(options) # Logic to get default modes
 
+      # GraphQL endpoint      
+      body = build_graphql_body(from, to, trip_datetime, transport_modes, options.merge(arrive_by: arrive_by))
+
       # GraphQL endpoint
       url = "#{@base_url}/index/graphql"
 
       Rails.logger.info("OTP Request: #{from} to #{to} at #{trip_datetime} with modes #{transport_modes}")
       Rails.logger.info("Url: #{url}")
-
-      # Build GraphQL body
-      body = build_graphql_body(from, to, trip_datetime, transport_modes)
       
       headers = {
         'Content-Type' => 'application/json',
@@ -73,7 +80,6 @@ module OTP
       Rails.logger.info("GraphQL Request: #{body}")
       Rails.logger.info("GraphQL URL: #{url}")
       Rails.logger.info("GraphQL Headers: #{headers}")
-      bundler.make_calls
 
       # Process and parse the response
       response = bundler.response(:plan_request)
@@ -82,14 +88,22 @@ module OTP
     end
 
     def determine_request_types(options = {})
-      {
+      request_types = {
         transit: { modes: [{ mode: "TRANSIT" }] },
         walk: { modes: [{ mode: "WALK" }] },
         flex: { modes: [{ mode: "FLEX", qualifier: "DIRECT" }] }
-      }.select do |type, _|
-        options[:allow_flex] || type != :flex
+      }
+    
+      # Include car_park if both CAR and TRANSIT are present
+      if options[:include_car] && options[:include_transit]
+        request_types[:car_park] = { modes: [{ mode: "CAR", qualifier: "PARK" }] }
+      elsif options[:include_car]
+        request_types[:car] = { modes: [{ mode: "CAR" }] }
       end
-    end  
+    
+      # Only include flex if allow_flex is true
+      request_types.select { |type, _| options[:allow_flex] || type != :flex }
+    end
 
     def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
       arrive_by = options[:arrive_by].nil? ? true : options[:arrive_by]
@@ -101,23 +115,27 @@ module OTP
 
       # Determine number of itineraries for the transport mode
       num_itineraries = transport_modes.map do |mode|
-        case mode[:mode]
-        when "TRANSIT"
-          Config.otp_transit_quantity
-        when "FLEX"
-          Config.otp_paratransit_quantity
-        when "BICYCLE"
-          Config.otp_bike_quantity
-        when "WALK"
-          Config.otp_walk_quantity
+        if mode[:mode] == "CAR" && mode[:qualifier] == "PARK"
+          Config.otp_car_park_quantity
         else
-          Config.otp_itinerary_quantity
+          case mode[:mode]
+          when "TRANSIT"
+            Config.otp_transit_quantity
+          when "FLEX"
+            Config.otp_paratransit_quantity
+          when "BICYCLE"
+            Config.otp_bike_quantity
+          when "WALK"
+            Config.otp_walk_quantity
+          else
+            Config.otp_itinerary_quantity
+          end
         end
       end.first || Config.otp_itinerary_quantity
     
       # Format transport modes for GraphQL
       formatted_modes = transport_modes.map do |mode|
-        if mode[:mode] == "FLEX"
+        if mode[:qualifier]
           "{ mode: #{mode[:mode]}, qualifier: #{mode[:qualifier]} }"
         else
           "{ mode: #{mode[:mode]} }"
@@ -127,12 +145,13 @@ module OTP
       # Build GraphQL query
       {
         query: <<-GRAPHQL,
-          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!) {
+          query($fromLat: Float!, $fromLon: Float!, $toLat: Float!, $toLon: Float!, $date: String!, $time: String!, $arriveBy: Boolean!) {
             plan(
               from: { lat: $fromLat, lon: $fromLon }
               to: { lat: $toLat, lon: $toLon }
               date: $date
               time: $time
+              arriveBy: $arriveBy
               transportModes: [#{formatted_modes}]
               numItineraries: #{num_itineraries}
               walkSpeed: #{walk_speed}
@@ -173,6 +192,10 @@ module OTP
                       name
                     }
                   }
+                  legGeometry {
+                    points
+                    length
+                  }
                   from {
                     name
                     lat
@@ -184,6 +207,11 @@ module OTP
                     lat
                     lon
                     arrivalTime
+                  }
+                  intermediateStops {
+                    name
+                    lat
+                    lon
                   }
                   fareProducts {
                     id
@@ -203,6 +231,16 @@ module OTP
                       }
                     }
                   }
+                  steps {
+                    distance
+                    relativeDirection
+                    streetName
+                    absoluteDirection
+                    area
+                    bogusName
+                    stayOn
+                    walkingBike
+                  }
                 }
               }
             }
@@ -214,7 +252,8 @@ module OTP
           toLat: to[0].to_f,
           toLon: to[1].to_f,
           date: trip_datetime.strftime("%Y-%m-%d"),
-          time: trip_datetime.strftime("%H:%M")
+          time: trip_datetime.strftime("%H:%M"),
+          arriveBy: arrive_by
         }
       }
     end

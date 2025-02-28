@@ -129,7 +129,7 @@ module Api
       end
 
       def json_legs
-        augmented_legs
+        augmented_legs.presence || []
       end
 
       def logo_url
