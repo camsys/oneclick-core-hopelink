@@ -358,42 +358,41 @@ class TripPlanner
     end
     
     # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.map do |itin|
-      # Find or initialize an itinerary for the service
+    router_itineraries = otp_itineraries.each_with_index.map do |otp_itin, index|
+      otp_data = otp_itin.instance_variable_get(:@itinerary)
+      duration = otp_data["duration"] || 0
+      calculated_duration = duration * @paratransit_drive_time_multiplier
+    
       itinerary = Itinerary.left_joins(:booking)
                             .where(bookings: { id: nil })
                             .find_or_initialize_by(
-                              service_id: itin.service_id,
+                              service_id: otp_itin.service_id,
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-      
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
-    
-      # Assign attributes from service and OTP response
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
-        cost: itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        legs: itin.legs,
+        cost: otp_itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
+        legs: otp_itin.legs,
         transit_time: calculated_duration
       })
     
+      # Reclassify trip_type if needed...
       has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
-      has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
-      has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
-      
+      has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) }
+    
       if has_flex && has_walk && has_other_mode
         itinerary.trip_type = "paratransit_mixed"
         Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and another mode—setting trip type to paratransit_mixed")
       elsif has_flex && has_walk
         itinerary.trip_type = "paratransit"
         Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
-      end      
+      end
     
       itinerary
-    end
+    end    
     
     # Services that passed accommodations but do not have a gtfs_agency_id
     non_gtfs_services = @available_services[:paratransit].where(gtfs_agency_id: [nil, ""])
