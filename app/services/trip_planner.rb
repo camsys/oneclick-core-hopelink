@@ -368,7 +368,7 @@ class TripPlanner
                               trip_id: @trip.id
                             )
       
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+      calculated_duration = (itin["duration"] || 0) * @paratransit_drive_time_multiplier
     
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
