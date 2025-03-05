@@ -367,14 +367,17 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-          
+      
+      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+    
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
         transit_time: calculated_duration,
-        legs: itin.legs
+        legs: itin.legs,
+        transit_time: calculated_duration
       })
     
       has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
@@ -407,13 +410,13 @@ class TripPlanner
                               trip_id: @trip.id
                             )
 
-      Rails.logger.info("Original duration from OTP: #{@router.get_duration(:paratransit)} seconds")
+      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
       
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: (@router.get_duration(:paratransit)) * @paratransit_drive_time_multiplier      
+        transit_time: calculated_duration,
       })
       itinerary
     end
