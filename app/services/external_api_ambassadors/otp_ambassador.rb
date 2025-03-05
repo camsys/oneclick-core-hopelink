@@ -92,12 +92,19 @@ class OTPAmbassador
   
 
   # Extracts a trip duration from the OTP response.
-  def get_duration(trip_type)
-    return 0 if errors(trip_type)
+  def get_durations(trip_type)
+    return [] if errors(trip_type) 
+  
     itineraries = ensure_response(trip_type).itineraries
-    duration = itineraries[0]["duration"] if itineraries[0]
-    Rails.logger.info("Extracted duration for #{trip_type}: #{duration} seconds")
-    return duration || 0
+    return [] if itineraries.empty?
+  
+    durations = itineraries.map { |itinerary| itinerary["duration"] }
+    
+    durations.each_with_index do |duration, index|
+      Rails.logger.info("Extracted duration for #{trip_type}, itinerary #{index + 1}: #{duration} seconds")
+    end
+  
+    durations
   end  
 
   # Extracts a trip distance from the OTP response.
