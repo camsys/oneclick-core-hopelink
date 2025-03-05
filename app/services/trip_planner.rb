@@ -375,7 +375,6 @@ class TripPlanner
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: calculated_duration,
         legs: itin.legs,
         transit_time: calculated_duration
       })

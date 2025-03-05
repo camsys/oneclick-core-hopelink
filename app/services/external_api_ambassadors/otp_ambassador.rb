@@ -267,7 +267,6 @@ class OTPAmbassador
       legs: otp_itin["legs"],
       trip_type: trip_type,
       service_id: service_id,
-      duration: otp_itin["duration"],
     }
   end
 
