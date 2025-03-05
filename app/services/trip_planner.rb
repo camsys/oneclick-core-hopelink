@@ -359,8 +359,8 @@ class TripPlanner
     
     # Build itineraries from OTP itineraries
     router_itineraries = otp_itineraries.each_with_index.map do |otp_itin, index|
-      Rails.logger.info("Duration for OTP itinerary #{index}: #{otp_itin['duration']}") 
-      duration = otp_itin["duration"]
+      Rails.logger.info("Duration for OTP itinerary #{index}: #{otp_itin[index]['duration']}") 
+      duration = otp_itin[index]["duration"]
       calculated_duration = duration * @paratransit_drive_time_multiplier
     
       itinerary = Itinerary.left_joins(:booking)
