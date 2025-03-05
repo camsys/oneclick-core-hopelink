@@ -408,7 +408,9 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-      
+
+      Rails.logger.info("Original duration from OTP: #{@router.get_duration(:paratransit)} seconds")
+
       calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
       
       itinerary.assign_attributes({
