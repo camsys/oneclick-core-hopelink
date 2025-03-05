@@ -358,8 +358,8 @@ class TripPlanner
     end
     
     # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.each_with_index.map do |otp_itin, index|
-      duration = otp_itin[index]["duration"]
+    router_itineraries = otp_itineraries.map do |otp_itin|
+      duration = otp_itin["duration"] || 0
       calculated_duration = duration * @paratransit_drive_time_multiplier
     
       itinerary = Itinerary.left_joins(:booking)
@@ -369,6 +369,7 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
+    
       itinerary.assign_attributes({
         assistant: @options[:assistant],
         companions: @options[:companions],
@@ -377,7 +378,7 @@ class TripPlanner
         transit_time: calculated_duration
       })
     
-      # Reclassify trip_type if needed...
+      # Reclassification logic if needed...
       has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
       has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) }
@@ -391,7 +392,7 @@ class TripPlanner
       end
     
       itinerary
-    end    
+    end      
     
     # Services that passed accommodations but do not have a gtfs_agency_id
     non_gtfs_services = @available_services[:paratransit].where(gtfs_agency_id: [nil, ""])
