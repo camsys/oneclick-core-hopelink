@@ -367,9 +367,7 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-      
-      calculated_duration = (itin["duration"] || 0) * @paratransit_drive_time_multiplier
-    
+          
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
         assistant: @options[:assistant],
@@ -415,7 +413,7 @@ class TripPlanner
         assistant: @options[:assistant],
         companions: @options[:companions],
         cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier      
+        transit_time: (@router.get_duration(:paratransit)) * @paratransit_drive_time_multiplier      
       })
       itinerary
     end
