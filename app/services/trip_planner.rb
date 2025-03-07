@@ -328,8 +328,11 @@ class TripPlanner
                               trip_type: :paratransit,
                               trip_id: @trip.id
                             )
-      
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+  
+      duration = itin["duration"] || (itin.legs&.first && itin.legs&.last ? 
+                  (itin.legs.last["to"]["arrivalTime"] - itin.legs.first["from"]["departureTime"]) / 1000.0 : 0)
+  
+      calculated_duration = duration * @paratransit_drive_time_multiplier
     
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
@@ -369,7 +372,8 @@ class TripPlanner
                               trip_id: @trip.id
                             )
       
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+      duration = @router.get_duration(:paratransit) || 0
+      calculated_duration = duration * @paratransit_drive_time_multiplier
       
       itinerary.assign_attributes({
         assistant: @options[:assistant],
@@ -386,7 +390,6 @@ class TripPlanner
     Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
     all_itineraries
   end
-  
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
   def build_taxi_itineraries
