@@ -368,7 +368,11 @@ class TripPlanner
                               trip_id: @trip.id
                             )
       
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+      # Get duration, falling back to calculation if missing
+      duration = itin["duration"] || (itin.legs&.first && itin.legs&.last ? 
+                  (itin.legs.last["to"]["arrivalTime"] - itin.legs.first["from"]["departureTime"]) / 1000.0 : 0)
+
+      calculated_duration = duration * @paratransit_drive_time_multiplier
     
       # Assign attributes from service and OTP response
       itinerary.assign_attributes({
@@ -381,7 +385,6 @@ class TripPlanner
     
       has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
       has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
-      has_transit = itinerary.legs.any? { |leg| leg["mode"] == "BUS" }
       has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
       
       if has_flex && has_walk && has_other_mode
@@ -409,7 +412,8 @@ class TripPlanner
                               trip_id: @trip.id
                             )
       
-      calculated_duration = @router.get_duration(:paratransit) * @paratransit_drive_time_multiplier
+      duration = @router.get_duration(:paratransit) || 0
+      calculated_duration = duration * @paratransit_drive_time_multiplier
       
       itinerary.assign_attributes({
         assistant: @options[:assistant],
