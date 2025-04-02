@@ -46,33 +46,29 @@ class TripPlanner
 
   # Constructs Itineraries for the Trip based on the options passed
   def plan
-    Rails.logger.info("Starting plan method for trip: #{@trip.id}")
-
-    # Identify available services and set instance variable for use in building itineraries
+    Rails.logger.info("[TripPlanner#plan] Starting plan for trip: #{@trip.id}")
+  
     set_available_services
-
-    # Sets up external ambassadors
     prepare_ambassadors
-    Rails.logger.info("Ambassadors prepared.")
-
-    # Build itineraries for each requested trip_type, then save the trip
+  
+    Rails.logger.info("[TripPlanner#plan] Available trip types: #{@trip_types}")
+    Rails.logger.info("[TripPlanner#plan] Available services: #{@available_services.inspect}")
+  
     build_all_itineraries
-    Rails.logger.info("All itineraries built.")
-
-    # Run through post-planning filters
-    filter_itineraries
-    no_transit = true
-    no_paratransit = true
-    @trip.itineraries.each do |itin|
-      if itin.trip_type == "transit"
-        no_transit = false
-      elsif itin.trip_type == "paratransit"
-        no_paratransit = false
+  
+    Rails.logger.info("[TripPlanner#plan] Itineraries after build:")
+    @trip.itineraries.each_with_index do |itin, idx|
+      Rails.logger.info("[TripPlanner#plan] Itinerary ##{idx}: trip_type=#{itin.trip_type}, service_id=#{itin.service_id}")
+      itin.legs&.each_with_index do |leg, i|
+        Rails.logger.info("[TripPlanner#plan] └── Leg #{i}: mode=#{leg['mode']}, serviceType=#{leg['serviceType']}")
       end
     end
-    @trip.no_valid_services = no_paratransit && no_transit
+  
+    filter_itineraries
+  
     @trip.save
   end
+  
 
   # Set up external API ambassadors
   def prepare_ambassadors
@@ -153,149 +149,62 @@ class TripPlanner
   
   # Builds itineraries for all trip types
   def build_all_itineraries
-    Rails.logger.info("Building all itineraries for trip types: #{@trip_types}")
+    Rails.logger.info("[TripPlanner#build_all_itineraries] Building for types: #{@trip_types.inspect}")
   
-    # Log the trip types being processed to ensure they are correct and unique
-    @trip_types.each { |t| Rails.logger.info("Processing trip type: #{t}") }
-  
-    # Build itineraries for each trip type
     trip_itineraries = @trip_types.flat_map do |t|
-      Rails.logger.info("Calling build_itineraries for trip type: #{t}")
+      Rails.logger.info("[TripPlanner#build_all_itineraries] → Building for trip_type: #{t}")
       build_itineraries(t)
     end
   
-    Rails.logger.info("Reclassifying itineraries based on legs")
-    trip_itineraries.each do |itin|
-      if itin.legs&.any?
-        all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
-        has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
-        has_transit = itin.legs.any? { |leg| leg["mode"] == "BUS" }
-        has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
-        has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
-  
-        # Adjust trip type
-        if has_flex && has_walk && has_transit
-          Rails.logger.info("Reclassifying itinerary with FLEX_ACCESS, WALK, and BUS—setting trip type to paratransit_mixed")
-          itin.trip_type = "paratransit_mixed"
-        elsif has_flex && has_walk
-          Rails.logger.info("Reclassifying itinerary with FLEX_ACCESS and WALK—setting trip type to paratransit_mixed")
-          itin.trip_type = "paratransit_mixed"
-        elsif has_walk && itin.trip_type == "paratransit"
-          Rails.logger.info("Reclassifying walk-only itinerary as paratransit.")
-          itin.trip_type = "paratransit"
-        elsif has_transit && itin.trip_type == "walk"
-          Rails.logger.info("Reclassifying walk-only itinerary as transit.")
-          itin.trip_type = "transit"
-        elsif all_walk && itin.trip_type == "transit"
-          Rails.logger.info("Reclassifying walk-only itinerary as walk.")
-          itin.trip_type = "walk"
-        end
-      else
-        Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
-      end
-    end    
-  
-    # Separate new and existing itineraries
-    new_itineraries = trip_itineraries.reject(&:persisted?)
-    old_itineraries = trip_itineraries.select(&:persisted?)
-  
-    # Log categorized itineraries
-    Rails.logger.info("New itineraries count: #{new_itineraries.count}")
-    Rails.logger.info("Old itineraries count: #{old_itineraries.count}")
-  
-    # Save old itineraries and associate new ones with the trip
-    Itinerary.transaction do
-      old_itineraries.each do |itin|
-        Rails.logger.info("Saving existing itinerary: #{itin.inspect}")
-        itin.save!
-      end
-  
-      @trip.itineraries += new_itineraries
+    trip_itineraries.each_with_index do |itin, idx|
+      leg_modes = itin.legs&.map { |l| l['mode'] } || []
+      Rails.logger.info("[TripPlanner#build_all_itineraries] Raw Itinerary ##{idx} modes: #{leg_modes}, initial type: #{itin.trip_type}")
     end
   
-    Rails.logger.info("All itineraries successfully processed for trip: #{@trip.id}")
+    # Reclassification
+    trip_itineraries.each_with_index do |itin, idx|
+      if itin.legs&.any?
+        modes = itin.legs.map { |leg| leg["mode"] }
+        has_flex = modes.include?("FLEX_ACCESS")
+        has_walk = modes.include?("WALK")
+        has_transit = modes.include?("BUS")
+        all_walk = modes.all? { |m| m == "WALK" }
+  
+        Rails.logger.info("[TripPlanner#build_all_itineraries] Itin ##{idx} pre-reclass: #{modes} type=#{itin.trip_type}")
+  
+        if has_flex && has_walk && has_transit
+          itin.trip_type = "paratransit_mixed"
+          Rails.logger.info("[TripPlanner#build_all_itineraries] → Reclassed as paratransit_mixed (has FLEX, WALK, BUS)")
+        elsif has_flex && has_walk
+          itin.trip_type = "paratransit_mixed"
+          Rails.logger.info("[TripPlanner#build_all_itineraries] → Reclassed as paratransit_mixed (has FLEX + WALK)")
+        elsif all_walk
+          itin.trip_type = "walk"
+          Rails.logger.info("[TripPlanner#build_all_itineraries] → Reclassed as walk")
+        end
+      end
+    end
+  
+    @trip.itineraries += trip_itineraries.reject(&:persisted?)
   end
+  
   
 
   # Additional sanity checks can be applied here.
   def filter_itineraries
-    Rails.logger.info("Filtering itineraries for trip #{@trip.id}. Initial count: #{@trip.itineraries.count}")
-  
+    Rails.logger.info("[TripPlanner#filter_itineraries] Filtering trip #{@trip.id} — initial: #{@trip.itineraries.size}")
     walk_seen = false
-    max_walk_minutes = Config.max_walk_minutes
-    max_walk_distance = Config.max_walk_distance
-    itineraries = @trip.itineraries.map do |itin|
   
-      ## Test: Make sure we never exceed the maximum walk time
-      if itin.walk_time && itin.walk_time > max_walk_minutes * 60
-        next
+    @trip.itineraries.each_with_index do |itin, idx|
+      Rails.logger.info("[TripPlanner#filter_itineraries] Itinerary ##{idx} trip_type=#{itin.trip_type}")
+      itin.legs&.each_with_index do |leg, i|
+        Rails.logger.info("  └── Leg #{i}: mode=#{leg['mode']}, serviceType=#{leg['serviceType']}")
       end
-  
-      ## Test: Make sure that we only ever return 1 walk trip
-      if itin.walk_time && itin.duration && itin.walk_time == itin.duration
-        if walk_seen
-          next
-        else
-          walk_seen = true
-        end
-      end
-  
-      # Test: Filter out walk-only itineraries when walking is deselected
-      if !@trip.itineraries.map(&:trip_type).include?('walk') && itin.trip_type == 'transit' && 
-         itin.legs.all? { |leg| leg['mode'] == 'WALK' } && itin.walk_distance >= itin.legs.first['distance']
-        next
-      end
-  
-      # Test: Filter out itineraries where user has deselected walking as a trip type,
-      # kept transit, and any walking leg in the transit trip exceeds the maximum walk distance
-      if !@trip.itineraries.map(&:trip_type).include?('walk') && itin.trip_type == 'transit' &&
-         itin.legs.detect { |leg| leg['mode'] == 'WALK' && leg["distance"] > max_walk_distance }
-        next
-      end
-  
-      # Test: Only apply max_walk_distance if walking is not selected as a trip type
-      if !@trip.itineraries.map(&:trip_type).include?('walk')
-        if itin.trip_type == 'transit' && itin.legs.any? { |leg| leg['mode'] == 'WALK' && leg["distance"] > max_walk_distance }
-          next
-        end
-      end
-  
-      # Reclassification logic based on itinerary legs (move from `build_transit_itineraries`)
-      if itin.legs&.any?
-        all_walk = itin.legs.all? { |leg| leg["mode"] == "WALK" }
-        has_walk = itin.legs.any? { |leg| leg["mode"] == "WALK" }
-        has_transit = itin.legs.any? { |leg| leg["mode"] == "BUS" }
-        has_flex = itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
-        has_car_park = itin.legs.any? { |leg| leg["mode"] == "CAR_PARK" }
-  
-        if (has_walk && itin.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }) &&
-           itin.legs.any? { |leg| !["WALK", "FLEX_ACCESS"].include?(leg["mode"]) }
-          itin.trip_type = "paratransit_mixed"
-          Rails.logger.info("Itinerary has WALK, PARATRANSIT, and another mode—setting trip type to paratransit_mixed")
-        elsif has_flex && has_walk
-          itin.trip_type = "paratransit"
-          Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
-        elsif has_walk && itin.trip_type == "paratransit"
-          itin.trip_type = "paratransit"
-          Rails.logger.info("Reclassifying walk-only itinerary as paratransit.")
-        elsif has_transit && itin.trip_type == "walk"
-          itin.trip_type = "transit"
-          Rails.logger.info("Reclassifying walk-only itinerary as transit.")
-        elsif all_walk && itin.trip_type == "transit"
-          itin.trip_type = "walk"
-          Rails.logger.info("Reclassifying walk-only itinerary as walk.")
-        end
-      else
-        Rails.logger.warn("Skipping reclassification for itinerary with no legs: #{itin.inspect}")
-      end
-  
-      itin 
     end
-    itineraries.delete(nil)
   
-    @trip.itineraries = itineraries
-    Rails.logger.info("Filtered itineraries count: #{@trip.itineraries.count}")
+    @trip.itineraries = @trip.itineraries.compact
   end
+  
 
 
   # Calls the requisite trip_type itineraries method
@@ -341,95 +250,41 @@ class TripPlanner
 
   # Builds paratransit itineraries for each service, populates transit_time based on OTP response
   def build_paratransit_itineraries
-    Rails.logger.info("Starting build_paratransit_itineraries...")
-    
-    return [] unless @available_services[:paratransit].present?
-    
-    # OTP-based itineraries that have a service with a type of 'Paratransit'
-    otp_itineraries = build_fixed_itineraries(:paratransit).select { |itin| itin.service_id.present? && itin.service.type == 'Paratransit' }
-    
-    Rails.logger.info("OTP itineraries count: #{otp_itineraries.inspect}")
-    
-    # Filter out transit-only itineraries
-    otp_itineraries.reject! do |itin|
-      has_paratransit = itin.legs.any? { |leg| leg["serviceType"] == "Paratransit" }
-      has_transit = itin.legs.any? { |leg| leg["serviceType"] == "Transit" }
-      !has_paratransit && has_transit
+    Rails.logger.info("[TripPlanner#build_paratransit_itineraries] Starting...")
+  
+    otp_itineraries = build_fixed_itineraries(:paratransit)
+    Rails.logger.info("[TripPlanner#build_paratransit_itineraries] OTP itineraries returned: #{otp_itineraries.size}")
+  
+    otp_itineraries.each_with_index do |itin, idx|
+      leg_modes = itin.legs.map { |leg| leg["mode"] }
+      Rails.logger.info("[TripPlanner#build_paratransit_itineraries] OTP Itinerary ##{idx} modes: #{leg_modes}")
     end
-    
-    # Build itineraries from OTP itineraries
-    router_itineraries = otp_itineraries.map do |itin|
-      # Find or initialize an itinerary for the service
-      itinerary = Itinerary.left_joins(:booking)
-                            .where(bookings: { id: nil })
-                            .find_or_initialize_by(
-                              service_id: itin.service_id,
-                              trip_type: :paratransit,
-                              trip_id: @trip.id
-                            )
-      
-      # Get duration, falling back to calculation if missing
-      duration = itin["duration"] || (itin.legs&.first && itin.legs&.last ? 
-                  (itin.legs.last["to"]["arrivalTime"] - itin.legs.first["from"]["departureTime"]) / 1000.0 : 0)
-
-      calculated_duration = duration * @paratransit_drive_time_multiplier
-    
-      # Assign attributes from service and OTP response
-      itinerary.assign_attributes({
-        assistant: @options[:assistant],
-        companions: @options[:companions],
-        cost: itin.service.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: calculated_duration,
-        legs: itin.legs
-      })
-    
-      has_flex = itinerary.legs.any? { |leg| leg["mode"] == "FLEX_ACCESS" }
-      has_walk = itinerary.legs.any? { |leg| leg["mode"] == "WALK" }
-      has_other_mode = itinerary.legs.any? { |leg| !["FLEX_ACCESS", "WALK"].include?(leg["mode"]) } 
-      
-      if has_flex && has_walk && has_other_mode
+  
+    router_itineraries = otp_itineraries.map.with_index do |itin, idx|
+      itinerary = Itinerary.find_or_initialize_by(service_id: itin.service_id, trip_type: :paratransit, trip_id: @trip.id)
+      itinerary.legs = itin.legs
+  
+      modes = itin.legs.map { |l| l["mode"] }
+      Rails.logger.info("[TripPlanner#build_paratransit_itineraries] Rechecking Itin ##{idx} modes: #{modes}")
+  
+      if modes.include?("FLEX_ACCESS") && modes.include?("WALK") && modes.any? { |m| !["WALK", "FLEX_ACCESS"].include?(m) }
         itinerary.trip_type = "paratransit_mixed"
-        Rails.logger.info("Itinerary has FLEX_ACCESS, WALK, and another mode—setting trip type to paratransit_mixed")
-      elsif has_flex && has_walk
+        Rails.logger.info("[TripPlanner#build_paratransit_itineraries] → Marked as paratransit_mixed")
+      elsif modes.include?("FLEX_ACCESS") && modes.include?("WALK")
         itinerary.trip_type = "paratransit"
-        Rails.logger.info("Itinerary has ONLY FLEX_ACCESS and WALK—setting trip type to paratransit")
-      end      
-    
+        Rails.logger.info("[TripPlanner#build_paratransit_itineraries] → Marked as paratransit")
+      else
+        Rails.logger.info("[TripPlanner#build_paratransit_itineraries] → Keeping default trip_type=#{itinerary.trip_type}")
+      end
+  
       itinerary
     end
-    
-    # Services that passed accommodations but do not have a gtfs_agency_id
-    non_gtfs_services = @available_services[:paratransit].where(gtfs_agency_id: [nil, ""])
-    
-    non_gtfs_itineraries = non_gtfs_services.map do |svc|
-      Rails.logger.info("Processing non-GTFS service ID: #{svc.id}")
-      
-      itinerary = Itinerary.left_joins(:booking)
-                            .where(bookings: { id: nil })
-                            .find_or_initialize_by(
-                              service_id: svc.id,
-                              trip_type: :paratransit,
-                              trip_id: @trip.id
-                            )
-      
-      duration = @router.get_duration(:paratransit) || 0
-      calculated_duration = duration * @paratransit_drive_time_multiplier
-      
-      itinerary.assign_attributes({
-        assistant: @options[:assistant],
-        companions: @options[:companions],
-        cost: svc.fare_for(@trip, router: @router, companions: @options[:companions], assistant: @options[:assistant]),
-        transit_time: calculated_duration,
-      })
-      
-      itinerary
-    end
-    
-    # Combine and return both sets of itineraries
-    all_itineraries = (router_itineraries + non_gtfs_itineraries).compact
-    Rails.logger.info("Final built itineraries count: #{all_itineraries.count}")
-    all_itineraries
+  
+    Rails.logger.info("[TripPlanner#build_paratransit_itineraries] Final router itineraries: #{router_itineraries.size}")
+    router_itineraries
   end
+  
+  
   
   
   # Builds taxi itineraries for each service, populates transit_time based on OTP response
