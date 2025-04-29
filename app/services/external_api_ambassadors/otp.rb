@@ -106,7 +106,7 @@ module OTP
 
     def build_graphql_body(from, to, trip_datetime, transport_modes, options = {})
       arrive_by = options[:arrive_by].nil? ? true : options[:arrive_by]
-      walk_speed = options[:walk_speed] || 3.0 # in m/s
+      walk_speed = (options[:walk_speed] || 3.0) * 0.44704  # convert m/s into mph
       max_walk_distance = options[:max_walk_distance] || 2 * 1609.34 # in meters
       max_bicycle_distance = options[:max_bicycle_distance] || 5 * 1609.34 # in meters
       walk_reluctance = options[:walk_reluctance] || Config.walk_reluctance
