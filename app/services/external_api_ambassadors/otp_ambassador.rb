@@ -234,10 +234,13 @@ class OTPAmbassador
       if svc
         Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
-        # Update leg mode based on service type
-        if svc.type == "Paratransit" && leg["mode"] == "BUS"
-          leg["mode"] = "FLEX_ACCESS"
-          Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
+        # Update leg mode to flex based on geometry, advance booking, reservation, or coordination
+        if (leg["from"]["stop"]["geometries"] != nil ||
+          leg["to"]["stop"]["geometries"] != nil ||
+          leg["pickupBookingInfo"]["latestBookingTime"]["daysPrior"].to_i > 0 ||
+          [leg["boardRule"], leg["alightRule"]].any? {|r| ["mustPhone", "coordinateWithDriver"].include? r})
+            leg["mode"] = "FLEX_ACCESS"
+            Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
         end
       else
         Rails.logger.info("No matching service found for GTFS agency ID: #{gtfs_agency_id}, Name: #{gtfs_agency_name}")
