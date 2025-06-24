@@ -235,9 +235,9 @@ class OTPAmbassador
         Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
         # Update leg mode to flex based on geometry, advance booking, reservation, or coordination
-        if (leg["from"]["stop"]["geometries"] != nil ||
-          leg["to"]["stop"]["geometries"] != nil ||
-          leg["pickupBookingInfo"]["latestBookingTime"]["daysPrior"].to_i > 0 ||
+        if (leg["from"].try(:stop).try(:geometries) != nil ||
+          leg["to"].try(:stop).try(:geometries) != nil ||
+          leg["pickupBookingInfo"].try(:latestBookingTime).try(:daysPrior).to_i > 0 ||
           [leg["boardRule"], leg["alightRule"]].any? {|r| ["mustPhone", "coordinateWithDriver"].include? r})
             leg["mode"] = "FLEX_ACCESS"
             Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
