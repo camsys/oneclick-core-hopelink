@@ -318,10 +318,14 @@ module OTP
 
     # Extracts the fare value in dollars
     def fare_in_dollars
-      @itinerary['fare'] &&
-      @itinerary['fare']['fare'] &&
-      @itinerary['fare']['fare']['regular'] &&
-      @itinerary['fare']['fare']['regular']['cents'].to_f/100.0
+      @itinerary.try(:legs).each do |leg|
+        leg.try(:fareProducts).each do |fp|
+          if fp.try(:product).try(:name) == "regular"
+            return fp.try(:product).try(:price).try(:amount)
+          end
+        end
+      end
+      return 0.to_f
     end
 
     # Getter method for itinerary's legs
