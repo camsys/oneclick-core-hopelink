@@ -199,14 +199,22 @@ module OTP
                     lat
                     lon
                     departureTime
-                    geometries
+                    stop {
+                      geometries {
+                        geoJson
+                      }
+                    }
                   }
                   to {
                     name
                     lat
                     lon
                     arrivalTime
-                    geometries
+                    stop {
+                      geometries {
+                        geoJson
+                      }
+                    }
                   }
                   intermediateStops {
                     name
@@ -246,8 +254,8 @@ module OTP
                       daysPrior
                     }
                   }
-                  boardRule
-                  alightRule
+                  dropoffType
+                  pickupType
                 }
               }
             }

@@ -238,7 +238,7 @@ class OTPAmbassador
         if (leg["from"].try(:stop).try(:geometries) != nil ||
           leg["to"].try(:stop).try(:geometries) != nil ||
           leg["pickupBookingInfo"].try(:latestBookingTime).try(:daysPrior).to_i > 0 ||
-          [leg["boardRule"], leg["alightRule"]].any? {|r| ["mustPhone", "coordinateWithDriver"].include? r})
+          [leg["pickupType"], leg["dropoffType"]].any? {|r| ["CALL_AGENCY", "COORDINATE_WITH_DRIVER"].include? r})
             leg["mode"] = "FLEX_ACCESS"
             Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
         end
