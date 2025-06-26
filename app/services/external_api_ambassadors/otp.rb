@@ -199,12 +199,14 @@ module OTP
                     lat
                     lon
                     departureTime
+                    geometries
                   }
                   to {
                     name
                     lat
                     lon
                     arrivalTime
+                    geometries
                   }
                   intermediateStops {
                     name
@@ -239,6 +241,13 @@ module OTP
                     stayOn
                     walkingBike
                   }
+                  pickupBookingInfo {
+                    latestBookingTime {
+                      daysPrior
+                    }
+                  }
+                  boardRule
+                  alightRule
                 }
               }
             }
