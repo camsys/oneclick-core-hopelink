@@ -235,12 +235,12 @@ class OTPAmbassador
         Rails.logger.info("Matched service: #{svc.name}, Type: #{svc.type}")
         
         # Update leg mode to flex based on geometry, advance booking, reservation, or coordination
-        Rails.logger.info("From geometries type: #{leg["from"].try(:stop).try(:geometries).try(:geoJson).try(:type)}")
-        Rails.logger.info("To geometries type: #{leg["to"].try(:stop).try(:geometries).try(:geoJson).try(:type)}")
-        Rails.logger.info("Days prior: #{leg["pickupBookingInfo"].try(:latestBookingTime).try(:daysPrior).to_i}")
-        if (![nil, "Point"].include?(leg["from"].try(:stop).try(:geometries).try(:geoJson).try(:type)) ||
-          ![nil, "Point"].include?(leg["to"].try(:stop).try(:geometries).try(:geoJson).try(:type)) ||
-          leg["pickupBookingInfo"].try(:latestBookingTime).try(:daysPrior).to_i > 0 ||
+        Rails.logger.info("From geometries type: #{leg.dig("from", "stop", "geometries", "geoJson", "type")}. Nil?: #{leg.dig("from", "stop", "geometries", "geoJson", "type") == nil}. Blank?: #{leg.dig("from", "stop", "geometries", "geoJson", "type") == ""}")
+        Rails.logger.info("To geometries type: #{leg.dig("to", "stop", "geometries", "geoJson", "type")}. Nil?: #{leg.dig("to", "stop", "geometries", "geoJson", "type") == nil}. Blank?: #{leg.dig("to", "stop", "geometries", "geoJson", "type") == ""}")
+        Rails.logger.info("Days prior: #{leg.dig("pickupBookingInfo", "latestBookingTime", "daysPrior").to_i}. Nil?: #{leg.dig("pickupBookingInfo", "latestBookingTime", "daysPrior") == nil}. Blank?: #{leg.dig("pickupBookingInfo", "latestBookingTime", "daysPrior") == ""}")
+        if (![nil, "Point"].include?(leg.dig("from", "stop", "geometries", "geoJson", "type")) ||
+          ![nil, "Point"].include?(leg.dig("to", "stop", "geometries", "geoJson", "type")) ||
+          leg.dig("pickupBookingInfo", "latestBookingTime", "daysPrior").to_i > 0 ||
           [leg["pickupType"], leg["dropoffType"]].any? {|r| ["CALL_AGENCY", "COORDINATE_WITH_DRIVER"].include? r})
             leg["mode"] = "FLEX_ACCESS"
             Rails.logger.info("Updated leg mode to FLEX_ACCESS for paratransit service: #{svc.name}")
