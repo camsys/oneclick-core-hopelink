@@ -45,12 +45,17 @@ class UserMailer < ApplicationMailer
 
   # Here to Support API/V1 
   def user_trip_email(addresses, trip, itinerary=nil)
+    Rails.logger.info("\n\nIn UserMailer.user_trip_email...")
     @trip = trip
+    Rails.logger.info("\n@trip: #{@trip.inspect}")
     @traveler = trip.user
+    Rails.logger.info("\n@traveler: #{@traveler.inspect}")
     @locale = @traveler.locale.try(:name)
+    Rails.logger.info("\n@locale: #{@locale}")
     subject = [application_title, "Trip Details sent to you by traveler's request"].compact.join(" ")
     @itinerary = itinerary || @trip.selected_itinerary
     unless @itinerary
+      Rails.logger.info("\n@itinerary not found, returning")
       return
     end
 
@@ -58,6 +63,7 @@ class UserMailer < ApplicationMailer
     attach_map_image
     attach_standard_icons #TODO: Don't attach all icons by default.  Attach them as needed.
 
+    Rails.logger.info("\n@itinerary found and images attached. proceeding to mail")
     mail(to: addresses, subject: subject)
   end
 
