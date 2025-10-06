@@ -63,7 +63,7 @@ class UserMailer < ApplicationMailer
     attach_map_image
     attach_standard_icons #TODO: Don't attach all icons by default.  Attach them as needed.
 
-    Rails.logger.info("\n@itinerary found and images attached. proceeding to mail")
+    Rails.logger.info("\n@itinerary found and images attached.\n@itinerary: #{pp @itinerary.inspect}")
     mail(to: addresses, subject: subject)
   end
 
