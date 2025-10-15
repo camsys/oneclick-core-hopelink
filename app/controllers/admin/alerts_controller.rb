@@ -19,10 +19,12 @@ class Admin::AlertsController < Admin::AdminController
   def create
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
-    if warnings.nil?
+    errors = @alert.errors
+    if warnings.nil? && errors.nil?
       flash[:success] = "Alert Created"
     else
       flash[:warning] = "Alert Created with Warnings: #{warnings}"
+      flash[:danger] = @booking_window.errors.full_messages.join(" ") if !errors.nil?
     end
     redirect_to admin_alerts_path
   end
@@ -33,10 +35,12 @@ class Admin::AlertsController < Admin::AdminController
   def update
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
-    if warnings.nil?
+    errors = @alert.errors
+    if warnings.nil? && errors.nil?
       flash[:success] = "Alert Updated"
     else
-      flash[:warning] = "Alert Updated with Warnings: #{warnings}"
+      flash[:warning] = "Alert Updated with Warnings: #{warnings}" if !warnings.nil?
+      flash[:danger] = @booking_window.errors.full_messages.join(" ") if !errors.nil?
     end
     redirect_to edit_admin_alert_path(@alert)
   end
