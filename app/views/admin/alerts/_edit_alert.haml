@@ -27,6 +27,12 @@
         readonly: (cannot? :update, @alert)
 
   %hr
+  =f.input :start_date,
+    required: false,
+    readonly: (cannot? :update, @alert),
+    input_html: {class: 'datepicker',
+    value: @alert.start_date.strftime("%Y-%m-%d")},
+    as: :string, label: "Starts"
   =f.input :expiration,
     required: false,
     readonly: (cannot? :update, @alert),
