@@ -29,7 +29,7 @@ class Admin::AlertsController < Admin::AdminController
     if warnings.nil? && errors.empty?
       flash[:success] = "Alert Created"
     else
-      flash[:warning] = "Alert Created with Warnings: #{warnings}"
+      flash[:warning] = "Alert Created with Warnings: #{warnings}" if !warnings.nil?
       flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.empty?
     end
     redirect_to admin_alerts_path
