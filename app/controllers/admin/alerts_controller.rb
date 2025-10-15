@@ -20,6 +20,8 @@ class Admin::AlertsController < Admin::AdminController
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
     errors = @alert.errors
+    Rails.logger.info "Warnings: #{@alert.warnings}"
+    Rails.logger.info "Errors: #{@alert.errors}"
     if warnings.nil? && errors.nil?
       flash[:success] = "Alert Created"
     else
@@ -36,6 +38,8 @@ class Admin::AlertsController < Admin::AdminController
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
     errors = @alert.errors
+    Rails.logger.info "Warnings: #{@alert.warnings}"
+    Rails.logger.info "Errors: #{@alert.errors}"
     if warnings.nil? && errors.nil?
       flash[:success] = "Alert Updated"
     else
