@@ -123,7 +123,7 @@ class Alert < ApplicationRecord
 
   # Validation methods
   def uniquely_active_within_date
-    active_alerts_count = Alert.where("start_date < ? AND expiration > ? AND published == ?", self.expiration, self.start_date, true).count
+    active_alerts_count = Alert.where("start_date < ? AND expiration > ? AND published = ?", self.expiration, self.start_date, true).count
     self.errors.add(:published, "Only one alert may be published within a given date range. Please change the time window, or set the alert as unpublished to save it as a draft until the conflict is resolved.") if (active_alerts_count > 0 && self.published)
   end
 	
