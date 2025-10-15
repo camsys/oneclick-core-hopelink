@@ -26,11 +26,11 @@ class Admin::AlertsController < Admin::AdminController
       Rails.logger.info e.inspect
     end
 
-    if warnings.nil? && errors.nil?
+    if warnings.nil? && errors.empty?
       flash[:success] = "Alert Created"
     else
       flash[:warning] = "Alert Created with Warnings: #{warnings}"
-      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.empty?
     end
     redirect_to admin_alerts_path
   end
@@ -48,11 +48,11 @@ class Admin::AlertsController < Admin::AdminController
       Rails.logger.info e.inspect
     end
 
-    if warnings.nil? && errors.nil?
+    if warnings.nil? && errors.empty?
       flash[:success] = "Alert Updated"
     else
       flash[:warning] = "Alert Updated with Warnings: #{warnings}" if !warnings.nil?
-      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.empty?
     end
     redirect_to edit_admin_alert_path(@alert)
   end
