@@ -52,7 +52,7 @@ class Admin::AlertsController < Admin::AdminController
       end
     end
 
-  	params.require(:alert).permit(:expiration, :published, :audience, translations: permitted_translations, audience_details: [:user_emails])
+  	params.require(:alert).permit(:start_date, :expiration, :published, :audience, translations: permitted_translations, audience_details: [:user_emails])
   end
   
 end
