@@ -11,6 +11,9 @@
     = tf.input "#{locale}_message", label:"Message", :as => :text, input_html: {value: ""}, placeholder: "#{locale} Message"
 
 %hr
+=f.input :start_date, required: true,
+  input_html: {class: 'datepicker'},
+  as: :string, label: "Starts"
 =f.input :expiration, required: true,
   input_html: {class: 'datepicker'}, 
   as: :string, label: "Expires"
