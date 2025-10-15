@@ -6,6 +6,9 @@ class Alert < ApplicationRecord
   has_many :users, through: :user_alerts
   attr_accessor :translations
 
+  ### VALIDATION ###
+  validate :uniquely_active_within_date
+
   ### CALLBACKS ###
   before_destroy :delete_translations
   before_create :set_expiration
@@ -16,7 +19,7 @@ class Alert < ApplicationRecord
 
   ### SCOPES ###
   scope :expired, -> { where('expiration < ?', DateTime.now.in_time_zone).order('expiration DESC') }
-  scope :current, -> { where('expiration >= ?', DateTime.now.in_time_zone).order('expiration ASC') }
+  scope :current, -> { where('start_date <= ? AND expiration >= ?', DateTime.now.in_time_zone, DateTime.now.in_time_zone).order('start_date ASC') }
   scope :is_published,  -> { where(published: true)}
   scope :for_everyone, -> { where(audience: "everyone")}
 
@@ -114,6 +117,14 @@ class Alert < ApplicationRecord
 
   def set_expiration
     self.expiration = self.expiration || (Time.now+7.days).at_midnight()
+  end
+
+  private
+
+  # Validation methods
+  def uniquely_active_within_date
+    active_alerts_count = Alert.where("start_date < ? AND expiration > ? AND published == ?", self.expiration, self.start_date, true).count
+    self.errors.add(:published, "Only one alert may be published within a given date range. Please change the time window, or set the alert as unpublished to save it as a draft until the conflict is resolved.") if (active_alerts_count > 0 && self.published)
   end
 	
 end
