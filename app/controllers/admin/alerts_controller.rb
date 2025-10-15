@@ -20,8 +20,12 @@ class Admin::AlertsController < Admin::AdminController
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
     errors = @alert.errors
-    Rails.logger.info "Warnings: #{warnings}"
-    Rails.logger.info "Errors: #{@alert.errors}"
+    Rails.logger.info "\nWarnings: #{warnings}"
+    Rails.logger.info "Errors:"
+    @alert.errors.each do |e|
+      Rails.logger.info e.inspect
+    end
+
     if warnings.nil? && errors.nil?
       flash[:success] = "Alert Created"
     else
@@ -38,8 +42,12 @@ class Admin::AlertsController < Admin::AdminController
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
     errors = @alert.errors
-    Rails.logger.info "Warnings: #{warnings}"
-    Rails.logger.info "Errors: #{@alert.errors}"
+    Rails.logger.info "\nWarnings: #{warnings}"
+    Rails.logger.info "Errors:"
+    @alert.errors.each do |e|
+      Rails.logger.info e.inspect
+    end
+
     if warnings.nil? && errors.nil?
       flash[:success] = "Alert Updated"
     else
@@ -62,5 +70,5 @@ class Admin::AlertsController < Admin::AdminController
 
   	params.require(:alert).permit(:start_date, :expiration, :published, :audience, translations: permitted_translations, audience_details: [:user_emails])
   end
-  
+
 end
