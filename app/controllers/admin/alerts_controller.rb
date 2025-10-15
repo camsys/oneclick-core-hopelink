@@ -24,7 +24,7 @@ class Admin::AlertsController < Admin::AdminController
       flash[:success] = "Alert Created"
     else
       flash[:warning] = "Alert Created with Warnings: #{warnings}"
-      flash[:danger] = @booking_window.errors.full_messages.join(" ") if !errors.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.nil?
     end
     redirect_to admin_alerts_path
   end
@@ -40,7 +40,7 @@ class Admin::AlertsController < Admin::AdminController
       flash[:success] = "Alert Updated"
     else
       flash[:warning] = "Alert Updated with Warnings: #{warnings}" if !warnings.nil?
-      flash[:danger] = @booking_window.errors.full_messages.join(" ") if !errors.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.nil?
     end
     redirect_to edit_admin_alert_path(@alert)
   end
