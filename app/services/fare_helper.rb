@@ -206,11 +206,11 @@ module FareHelper
       hash_column: :fare_details, 
       case_column: :fare_structure,
       structure: {
-        flat: [:flat_base_fare],
-        mileage: [:mileage_base_fare, :mileage_rate, :trip_type],
-        taxi_fare_finder: [:taxi_fare_finder_city],
-        zone: [],
-        url: [:url]
+        flat: [:flat_base_fare, :fare_text, :fare_url, :url_partner_text],
+        mileage: [:mileage_base_fare, :mileage_rate, :trip_type, :fare_text, :fare_url, :url_partner_text],
+        taxi_fare_finder: [:taxi_fare_finder_city, :fare_text, :fare_url, :url_partner_text],
+        zone: [:fare_text, :fare_url, :url_partner_text],
+        url: [:url, :fare_text, :fare_url, :url_partner_text]
       }
     )
 
@@ -253,29 +253,44 @@ module FareHelper
     end
 
     def package_empty
-      nil 
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_flat
       convert_param(:flat_base_fare) { |v| v.to_f }
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_mileage
       convert_param(:mileage_base_fare) { |v| v.to_f }
       convert_param(:mileage_rate) { |v| v.to_f }
       convert_param(:trip_type) { |v| v.underscore.to_sym }
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_url
       convert_param(:url) { |v| v.to_s }
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_taxi_fare_finder
-      return true
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_use_booking_service
-      return true
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_zone
@@ -307,6 +322,9 @@ module FareHelper
 
       # Swap out the old table with the new
       convert_param(:fare_table) { |_| new_table }
+      convert_param(:fare_text) { |v| v.to_s }
+      convert_param(:fare_url) { |v| v.to_s }
+      convert_param(:url_partner_text) { |v| v.to_s }
 
     end
   end
