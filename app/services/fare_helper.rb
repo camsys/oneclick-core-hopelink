@@ -268,7 +268,7 @@ module FareHelper
     def package_mileage
       convert_param(:mileage_base_fare) { |v| v.to_f }
       convert_param(:mileage_rate) { |v| v.to_f }
-      convert_param(:trip_type) { |v| v.underscore.to_sym }
+      convert_param(:trip_type) { |v| v&.underscore&.to_sym }
       convert_param(:fare_text) { |v| v.to_s }
       convert_param(:fare_url) { |v| v.to_s }
       convert_param(:url_partner_text) { |v| v.to_s }
