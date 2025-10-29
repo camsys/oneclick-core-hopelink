@@ -19,10 +19,18 @@ class Admin::AlertsController < Admin::AdminController
   def create
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
-    if warnings.nil?
+    errors = @alert.errors
+    Rails.logger.info "\nWarnings: #{warnings}"
+    Rails.logger.info "Errors:"
+    @alert.errors.each do |e|
+      Rails.logger.info e.inspect
+    end
+
+    if warnings.nil? && errors.empty?
       flash[:success] = "Alert Created"
     else
-      flash[:warning] = "Alert Created with Warnings: #{warnings}"
+      flash[:warning] = "Alert Created with Warnings: #{warnings}" if !warnings.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.empty?
     end
     redirect_to admin_alerts_path
   end
@@ -33,10 +41,18 @@ class Admin::AlertsController < Admin::AdminController
   def update
     Rails.logger.info params.ai 
     warnings = @alert.update alert_params
-    if warnings.nil?
+    errors = @alert.errors
+    Rails.logger.info "\nWarnings: #{warnings}"
+    Rails.logger.info "Errors:"
+    @alert.errors.each do |e|
+      Rails.logger.info e.inspect
+    end
+
+    if warnings.nil? && errors.empty?
       flash[:success] = "Alert Updated"
     else
-      flash[:warning] = "Alert Updated with Warnings: #{warnings}"
+      flash[:warning] = "Alert Updated with Warnings: #{warnings}" if !warnings.nil?
+      flash[:danger] = @alert.errors.full_messages.join(" ") if !errors.empty?
     end
     redirect_to edit_admin_alert_path(@alert)
   end
@@ -52,7 +68,7 @@ class Admin::AlertsController < Admin::AdminController
       end
     end
 
-  	params.require(:alert).permit(:expiration, :published, :audience, translations: permitted_translations, audience_details: [:user_emails])
+  	params.require(:alert).permit(:start_date, :expiration, :published, :audience, translations: permitted_translations, audience_details: [:user_emails])
   end
-  
+
 end

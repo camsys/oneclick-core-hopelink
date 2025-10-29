@@ -11,6 +11,10 @@ module Api
       def message
         object.try(:message, locale)
       end
+
+      def id
+        object.try(:alert_id)
+      end
     
     end
   end
