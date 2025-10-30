@@ -27,15 +27,15 @@ module Api
       end
 
       def fare_text
-        object.fare_details[:fare_text]
+        object.fare_details&.dig(:fare_text)
       end
 
       def fare_url
-        object.fare_details[:fare_url]
+        object.fare_details&.dig(:fare_url)
       end
 
       def url_partner_text
-        object.fare_details[:url_partner_text]
+        object.fare_details&.dig(:url_partner_text)
       end
 
     end
