@@ -180,6 +180,8 @@ module OTP
                 }
                 legs {
                   mode
+                  startTime
+                  endTime
                   distance
                   route { 
                     gtfsId
