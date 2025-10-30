@@ -14,9 +14,9 @@
         %td
           =alert.message
         %td
-          =alert.start_date.strftime("%D")
+          =alert.start_date&.strftime("%D")
         %td
-          =alert.expiration.strftime("%D")
+          =alert.expiration&.strftime("%D")
         %td
           =render partial: "shared/published_badge", locals: {object: alert}
 
