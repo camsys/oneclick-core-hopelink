@@ -13,6 +13,7 @@ class Service < ApplicationRecord
   include Publishable
   include ScheduleHelper
   include ScopeHelper
+  include FareDetailsTranslator
   write_to_csv with: Admin::ServicesReportCSVWriter
 
   ### ATTRIBUTES & ASSOCIATIONS ###
