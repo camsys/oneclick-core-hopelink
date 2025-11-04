@@ -131,9 +131,9 @@ module FareHelper
     end
 
     def validate_empty(record)
-      validate_fare_details_key(record, :fare_text, :text)
+      validate_fare_details_key(record, :fare_text, :string)
       validate_fare_details_key(record, :fare_url, :string)
-      validate_fare_details_key(record, :url_partner_text, :text)
+      validate_fare_details_key(record, :url_partner_text, :string)
     end
     
     def validate_url(record)
