@@ -87,7 +87,7 @@ module FareHelper
 
     # Builds a default OTPAmbassador if no router is provided
     def default_router
-      OTPAmbassador.new(@trip, [@fare_details[:trip_type]], @http_request_bundler)
+      OTPAmbassador.new(trip: @trip, trip_types: [@fare_details[:trip_type]], http_request_bundler: @http_request_bundler, locale: I18n.locale)
     end
 
     # Builds a default Taxi Fare Finder Ambassaor if no Taxi Ambassador is provided
@@ -131,9 +131,9 @@ module FareHelper
     end
 
     def validate_empty(record)
-      validate_fare_details_key(record, :fare_text, :string)
+      validate_fare_details_key(record, :fare_text, :text)
       validate_fare_details_key(record, :fare_url, :string)
-      validate_fare_details_key(record, :url_partner_text, :string)
+      validate_fare_details_key(record, :url_partner_text, :text)
     end
     
     def validate_url(record)

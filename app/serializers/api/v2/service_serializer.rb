@@ -27,7 +27,7 @@ module Api
       end
 
       def fare_text
-        object.fare_details&.dig(:fare_text)
+        object.fare_text(locale)
       end
 
       def fare_url
@@ -35,7 +35,7 @@ module Api
       end
 
       def url_partner_text
-        object.fare_details&.dig(:url_partner_text)
+        object.url_partner_text(locale)
       end
 
     end

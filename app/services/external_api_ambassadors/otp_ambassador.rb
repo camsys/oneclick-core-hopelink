@@ -40,13 +40,15 @@ class OTPAmbassador
       trip, 
       trip_types=TRIP_TYPE_DICTIONARY.keys, 
       http_request_bundler=HTTPRequestBundler.new, 
-      services=Service.published
+      services=Service.published,
+      locale=I18n.default_locale
     )
     
     @trip = trip
     @trip_types = trip_types
     @http_request_bundler = http_request_bundler
     @services = services
+    @locale = locale
     Rails.logger.info("Services ids: #{services.map(&:id)}")
 
 
@@ -286,9 +288,9 @@ class OTPAmbassador
         leg['serviceFareInfo'] = svc.url
         leg['serviceLogoUrl'] = svc.full_logo_url
         leg['serviceFullLogoUrl'] = svc.full_logo_url(nil)
-        leg['fareText'] = svc.fare_details&.dig(:fare_text)
+        leg['fareText'] = svc.fare_text(@locale)
         leg['fareUrl'] = svc.fare_details&.dig(:fare_url)
-        leg['urlPartnerText'] = svc.fare_details&.dig(:url_partner_text)
+        leg['urlPartnerText'] = svc.url_partner_text(@locale)
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')

@@ -32,7 +32,7 @@ class MultidayTripPlanner < TripPlanner
   
   # Create a new set of ambassadors for each trip
   def prepare_ambassadors
-    @router = OTPAmbassador.new(@trip, @trip_types, @http_request_bundler, @available_services[:transit])
+    @router = OTPAmbassador.new(@trip, @trip_types, @http_request_bundler, @available_services[:transit], I18n.locale)
     @taxi_ambassador = TFFAmbassador.new(@trip, @http_request_bundler, services: @available_services[:taxi])
     @uber_ambassador = UberAmbassador.new(@trip, @http_request_bundler)
     @lyft_ambassador = LyftAmbassador.new(@trip, @http_request_bundler)

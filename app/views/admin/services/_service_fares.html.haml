@@ -24,18 +24,21 @@
 
   .fare-inputs
     =f.fields_for :fare_details do |fd|
-      =fd.input :fare_text,
-       as: :string,
-       readonly: should_be_readonly,
-       input_html: {value: (fare_details[:fare_text] || "Fare details for this service.")}
       =fd.input :fare_url,
        as: :string,
        readonly: should_be_readonly,
        input_html: {value: fare_details[:fare_url]}
-      =fd.input :url_partner_text,
-       as: :string,
-       readonly: should_be_readonly,
-       input_html: {value: fare_details[:url_partner_text]}
+      -I18n.available_locales.each do |locale|
+        =f.input "#{locale}_fare_text",
+         as: :text,
+         label:"Fare Text (#{locale})",
+         readonly: should_be_readonly,
+         input_html: {value: (fare_details[:fare_text] || "Fare details for this service.")}
+        =f.input "#{locale}_url_partner_text",
+         as: :text,
+         label: "URL Partner Text (#{locale})",
+         readonly: should_be_readonly,
+         input_html: {value: fare_details[:url_partner_text]}
 
   -# FLAT
   -#.fare-inputs.flat-fare.hidden
