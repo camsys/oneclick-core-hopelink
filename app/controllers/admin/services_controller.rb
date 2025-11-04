@@ -221,7 +221,7 @@ class Admin::ServicesController < Admin::AdminController
       :name, :type, :logo,
       :url, :email, :phone,
       :agency_id, :published, :updated_at
-    ] + description_params + fare_text_params + url_partner_text_params
+    ] + description_params
   end
 
   def transit_params
@@ -278,14 +278,6 @@ class Admin::ServicesController < Admin::AdminController
   # returns an array of localized description param names
   def description_params
     I18n.available_locales.map { |l| "#{l}_description".to_sym }
-  end
-
-  def fare_text_params
-    I18n.available_locales.map { |l| "#{l}_fare_text".to_sym }
-  end
-
-  def url_partner_text_params
-    I18n.available_locales.map { |l| "#{l}_url_partner_text".to_sym }
   end
 
   def travel_pattern_services_params

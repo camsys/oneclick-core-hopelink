@@ -213,7 +213,7 @@ module FareHelper
         taxi_fare_finder: [:taxi_fare_finder_city],
         zone: [],
         url: [:url],
-        empty: [:fare_text, :fare_url, :url_partner_text]
+        empty: [:fare_text, :fare_url, :url_partner_text] + fare_text_params + url_partner_text_params
       }
     )
 
@@ -229,6 +229,13 @@ module FareHelper
       ]
     end
 
+    def fare_text_params
+      I18n.available_locales.map { |l| "#{l}_fare_text".to_sym }
+    end
+
+    def url_partner_text_params
+      I18n.available_locales.map { |l| "#{l}_url_partner_text".to_sym }
+    end
   end
 
   # Packages fare params as the proper serialized data type
