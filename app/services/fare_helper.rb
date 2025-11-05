@@ -213,7 +213,7 @@ module FareHelper
         taxi_fare_finder: [:taxi_fare_finder_city],
         zone: [],
         url: [:url],
-        empty: [:fare_text, :fare_url, :url_partner_text] + fare_text_params + url_partner_text_params
+        empty: [:fare_text, :fare_url, :url_partner_text] + I18n.available_locales.map { |l| "#{l}_fare_text".to_sym } + I18n.available_locales.map { |l| "#{l}_url_partner_text".to_sym }
       }
     )
 
@@ -227,14 +227,6 @@ module FareHelper
         fare_zones: (zone_recipes.empty? ? [{}] : zone_recipes),
         fare_table: (zone_grid.empty? ? [{}] : zone_grid)
       ]
-    end
-
-    def fare_text_params
-      I18n.available_locales.map { |l| "#{l}_fare_text".to_sym }
-    end
-
-    def url_partner_text_params
-      I18n.available_locales.map { |l| "#{l}_url_partner_text".to_sym }
     end
   end
 
