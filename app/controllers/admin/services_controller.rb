@@ -215,7 +215,7 @@ class Admin::ServicesController < Admin::AdminController
     permitted_params += travel_pattern_services_params if Config.dashboard_mode == "travel_patterns"
 
     Rails.logger.info "\ntransit_params: #{transit_params}\n"
-    Rails.logger.ingo "\npermitted_params: #{permitted_params}\n"
+    Rails.logger.info "\npermitted_params: #{permitted_params}\n"
     # Permit the allowed parameters
   	params.require(:service).permit(permitted_params)
   end
