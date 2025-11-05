@@ -94,6 +94,7 @@ class Admin::ServicesController < Admin::AdminController
         # Finally update service's assigned transportation agency
         # We update that last as oversight agency has higher precedence over
         # ...transit agency
+        Rails.logger.info "\ns_params on update with os_params: #{s_params}\n"
         @service.update_attributes(agency_id: transportation_agency_id)
       end
     # else if no oversight_params then just update service attributes as normal
@@ -104,6 +105,7 @@ class Admin::ServicesController < Admin::AdminController
         (s_params[:travel_pattern_services_attributes]&.reject{|k,v| v[:travel_pattern_id].blank?}&.values&.all?{|v| v[:_destroy] == "true"} && @service.published == true))
         @service.errors.add(:base, "Service cannot be published without at least one travel pattern assigned.")
       else
+        Rails.logger.info "\ns_params on update without os_params: #{s_params}\n"
         @service.update_attributes(s_params)
       end
     end
@@ -212,6 +214,8 @@ class Admin::ServicesController < Admin::AdminController
     permitted_params += lyft_params if service_type == "Lyft"
     permitted_params += travel_pattern_services_params if Config.dashboard_mode == "travel_patterns"
 
+    Rails.logger.info "\ntransit_params: #{transit_params}\n"
+    Rails.logger.ingo "\npermitted_params: #{permitted_params}\n"
     # Permit the allowed parameters
   	params.require(:service).permit(permitted_params)
   end

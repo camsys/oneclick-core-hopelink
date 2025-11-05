@@ -258,6 +258,10 @@ module FareHelper
       convert_param(:fare_text) { |v| v.to_s }
       convert_param(:fare_url) { |v| v.to_s }
       convert_param(:url_partner_text) { |v| v.to_s }
+      I18n.available_locales.each do |l|
+        convert_param("#{l}_fare_text".to_sym) { |v| v.to_s }
+        convert_param("#{l}_url_partner_text".to_sym) { |v| v.to_s }
+      end
     end
 
     def package_flat
