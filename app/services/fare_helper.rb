@@ -132,8 +132,6 @@ module FareHelper
 
     def validate_empty(record)
       validate_fare_details_key(record, :fare_text, :string)
-      validate_fare_details_key(record, :fare_url, :string)
-      validate_fare_details_key(record, :url_partner_text, :string)
     end
     
     def validate_url(record)
@@ -213,7 +211,7 @@ module FareHelper
         taxi_fare_finder: [:taxi_fare_finder_city],
         zone: [],
         url: [:url],
-        empty: [:fare_text, :fare_url, :url_partner_text]
+        empty: [:fare_text]
       }
     )
 
@@ -256,8 +254,6 @@ module FareHelper
 
     def package_empty
       convert_param(:fare_text) { |v| v.to_s }
-      convert_param(:fare_url) { |v| v.to_s }
-      convert_param(:url_partner_text) { |v| v.to_s }
     end
 
     def package_flat

@@ -3,7 +3,7 @@ module Api
     class ServiceSerializer < ApiSerializer
 
       attributes :id, :name, :type, :logo, :full_logo, :url, :email, :phone, :formatted_phone,
-                 :description, :rating, :ratings_count, :fare_text, :fare_url, :url_partner_text
+                 :description, :rating, :ratings_count, :fare_text
                  
       has_many :schedules
       has_many :accommodations
@@ -29,15 +29,6 @@ module Api
       def fare_text
         object.fare_text(locale)
       end
-
-      def fare_url
-        object.fare_details&.dig(:fare_url)
-      end
-
-      def url_partner_text
-        object.url_partner_text(locale)
-      end
-
     end
   end
 end

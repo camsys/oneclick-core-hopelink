@@ -289,8 +289,6 @@ class OTPAmbassador
         leg['serviceLogoUrl'] = svc.full_logo_url
         leg['serviceFullLogoUrl'] = svc.full_logo_url(nil)
         leg['fareText'] = svc.fare_text(@locale)
-        leg['fareUrl'] = svc.fare_details&.dig(:fare_url)
-        leg['urlPartnerText'] = svc.url_partner_text(@locale)
       else
         # Fallback to agency information
         agency = leg.dig('route', 'agency')
