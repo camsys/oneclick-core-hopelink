@@ -28,17 +28,17 @@
        as: :string,
        readonly: should_be_readonly,
        input_html: {value: fare_details[:fare_url]}
-      -I18n.available_locales.each do |locale|
-        =fd.input "#{locale}_fare_text",
-         as: :text,
-         label:"Fare Text (#{locale})",
-         readonly: should_be_readonly,
-         input_html: {value: (@service.fare_text(locale) || "Fare details for this service.")}
-        =fd.input "#{locale}_url_partner_text",
-         as: :text,
-         label: "URL Partner Text (#{locale})",
-         readonly: should_be_readonly,
-         input_html: {value: @service.url_partner_text(locale)}
+    -I18n.available_locales.each do |locale|
+      =f.input "#{locale}_fare_text",
+       as: :text,
+       label:"Fare Text (#{locale})",
+       readonly: should_be_readonly,
+       input_html: {value: (@service.fare_text(locale) || "Fare details for this service.")}
+      =f.input "#{locale}_url_partner_text",
+       as: :text,
+       label: "URL Partner Text (#{locale})",
+       readonly: should_be_readonly,
+       input_html: {value: @service.url_partner_text(locale)}
 
   -# FLAT
   -#.fare-inputs.flat-fare.hidden

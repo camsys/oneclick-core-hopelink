@@ -213,7 +213,7 @@ module FareHelper
         taxi_fare_finder: [:taxi_fare_finder_city],
         zone: [],
         url: [:url],
-        empty: [:fare_text, :fare_url, :url_partner_text] + I18n.available_locales.map { |l| "#{l}_fare_text".to_sym } + I18n.available_locales.map { |l| "#{l}_url_partner_text".to_sym }
+        empty: [:fare_text, :fare_url, :url_partner_text]
       }
     )
 
@@ -258,10 +258,6 @@ module FareHelper
       convert_param(:fare_text) { |v| v.to_s }
       convert_param(:fare_url) { |v| v.to_s }
       convert_param(:url_partner_text) { |v| v.to_s }
-      I18n.available_locales.each do |l|
-        convert_param("#{l}_fare_text".to_sym) { |v| v.to_s }
-        convert_param("#{l}_url_partner_text".to_sym) { |v| v.to_s }
-      end
     end
 
     def package_flat
