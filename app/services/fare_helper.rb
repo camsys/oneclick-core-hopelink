@@ -253,7 +253,7 @@ module FareHelper
     end
 
     def package_empty
-      convert_param(:fare_text) { |v| v.to_s }
+      return true
     end
 
     def package_flat
