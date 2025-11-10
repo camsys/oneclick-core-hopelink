@@ -131,7 +131,7 @@ module FareHelper
     end
 
     def validate_empty(record)
-      validate_fare_details_key(record, :fare_text, :string)
+      true
     end
     
     def validate_url(record)
@@ -211,7 +211,7 @@ module FareHelper
         taxi_fare_finder: [:taxi_fare_finder_city],
         zone: [],
         url: [:url],
-        empty: [:fare_text]
+        empty: []
       }
     )
 
