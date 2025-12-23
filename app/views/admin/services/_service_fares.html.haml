@@ -22,13 +22,17 @@
 
   -fare_details = @service.fare_details || {}
 
+  -if TranslationKey.find_by(name: @service.fare_text_translation_key)
+    %td.text-center
+      = link_to 'Auto Translate', simple_translation_engine.edit_translation_key_path(id: TranslationKey.find_by(name: @service.fare_text_translation_key)&.id, return_path: admin_service_path(@service)), {class: "btn btn-success btn-sm"}
+
   .fare-inputs
     -I18n.available_locales.each do |locale|
       =f.input "#{locale}_fare_text",
        as: :text,
        label:"Fare Text (#{locale})",
        readonly: should_be_readonly,
-       input_html: {value: (@service.fare_text(locale) || "Fare details for this service.")}
+       input_html: {value: (@service.fare_text(locale) == "missing key #{@service.fare_text_translation_key}" ? "" : @service.fare_text(locale))}
 
   -# FLAT
   -#.fare-inputs.flat-fare.hidden

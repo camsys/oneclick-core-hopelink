@@ -11,6 +11,13 @@
 
   =remote_form_input
 
+  -if TranslationKey.find_by(name: @alert.subject_translation_key)
+    %td.text-center
+      = link_to 'Auto Translate Subject', simple_translation_engine.edit_translation_key_path(id: TranslationKey.find_by(name: @alert.subject_translation_key)&.id, return_path: edit_admin_alert_path(@alert)), {class: "btn btn-success btn-sm"}
+  -if TranslationKey.find_by(name: @alert.message_translation_key)
+    %td.text-center
+      = link_to 'Auto Translate Message', simple_translation_engine.edit_translation_key_path(id: TranslationKey.find_by(name: @alert.message_translation_key)&.id, return_path: edit_admin_alert_path(@alert)), {class: "btn btn-success btn-sm"}
+
   =f.fields_for :translations do |tf|
     -I18n.available_locales.each do |locale|
       %h3.text-center
