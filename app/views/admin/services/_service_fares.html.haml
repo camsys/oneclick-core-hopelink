@@ -22,8 +22,8 @@
 
   -fare_details = @service.fare_details || {}
 
-    %td.text-center
-      = link_to 'Auto Translate', simple_translation_engine.edit_translation_key_path(@service.fare_text_translation_key), {class: "btn btn-success btn-sm"}
+  %td.text-center
+    = link_to 'Auto Translate', simple_translation_engine.edit_translation_key_path(@service.fare_text_translation_key), {class: "btn btn-success btn-sm"}
 
   .fare-inputs
     -I18n.available_locales.each do |locale|
