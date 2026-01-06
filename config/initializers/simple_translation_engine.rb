@@ -25,7 +25,7 @@ Rails.configuration.to_prepare do
     include TranslationsControllerExtensions
     authorize_resource
 
-    def edit(id, return_path = simple_translation_engine.translations_path)
+    def edit
 
       google_api_key = ENV['GOOGLE_API_KEY']
 
@@ -33,7 +33,7 @@ Rails.configuration.to_prepare do
       source_locale = Locale.of(I18n.default_locale)
 
       @google_translations = {}
-      @return_path = return_path
+      @return_path = params[:return_path].blank? ? simple_translation_engine.translations_path : params[:return_path]
 
       Locale.where(name: I18n.available_locales.sort).where.not(name: I18n.default_locale).each do |locale|
         unless @translation_key.translation(locale)
@@ -49,10 +49,11 @@ Rails.configuration.to_prepare do
       end
     end
 
-    def update(id, return_path = simple_translation_engine.translations_path)
+    def update
 
       Rails.logger.info "Saving translation.  Params = "
       Rails.logger.info params
+      return_path = params[:return_path].blank? ? simple_translation_engine.translations_path : params[:return_path]
 
       if @translation_key.update(translation_key_params)
         flash[:success] = "Translation Successfully Updated"
