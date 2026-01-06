@@ -23,7 +23,7 @@
   -fare_details = @service.fare_details || {}
 
   %td.text-center
-    = link_to 'Auto Translate', simple_translation_engine.edit_translation_key_path(TranslationKey.find_by(name: @service.fare_text_translation_key).id), {class: "btn btn-success btn-sm"}
+    = link_to 'Auto Translate', simple_translation_engine.edit_translation_key_path(id: TranslationKey.find_by(name: @service.fare_text_translation_key).id, return_path: admin_service_path(@service)), {class: "btn btn-success btn-sm"}
 
   .fare-inputs
     -I18n.available_locales.each do |locale|

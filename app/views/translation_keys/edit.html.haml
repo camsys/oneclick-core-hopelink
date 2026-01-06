@@ -1,0 +1,45 @@
+%h1.text-center
+  Edit Translation Key
+
+.row
+  .col-md-12
+    .panel.panel-primary
+      .panel-heading
+        %h4
+          =@translation_key.name
+      .panel-body
+        #translation_key_form
+          .row
+            .col-sm-12
+              %h4
+                %b Value to Translate:
+                %h4= @translation_key.translations.find_by(locale_id: Locale.find_by(name: I18n.default_locale.to_s).id).value
+
+          = simple_form_for @translation_key, url: simple_translation_engine.translation_key_path(id: @translation_key, return_path: @return_path), html: { class: 'form-horizontal' }, wrapper: :horizontal_form do |t|
+            %table.table.datatable
+              %thead.thead-default
+                %tr
+                  %th Language
+                  %th Previous Value
+                  %th
+                    Auto-translated Value
+                    %span.badge.badge-danger{style: 'white-space: normal;'} These values will overwrite previous values. Manually correct any auto-translations.
+                %tbody
+                  = t.simple_fields_for :translations do |tr|
+                    - unless tr.object.locale.name.to_s == I18n.default_locale.to_s
+                      %tr
+                        %td
+                          = tr.object.locale.name
+                          = tr.input :locale_id, as: :hidden, :input_html => { :value => tr.object.locale_id }
+                        %td= tr.object.value
+                        %td= tr.input :value, label: false, input_html: {rows: 10, value: @google_translations[tr.object.locale_id]}
+
+      .panel-footer.panel-primary
+        %center
+          = button_tag id:'save_translation', type: 'submit', class: "btn action-button btn-primary" do
+            = "Save"
+
+:javascript
+  $('#save_translation').on('click', function(){
+    $('#translation_key_form form').submit();
+  });
