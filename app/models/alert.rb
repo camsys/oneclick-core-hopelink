@@ -70,11 +70,19 @@ class Alert < ApplicationRecord
   end
 
   def message locale=I18n.default_locale
-    SimpleTranslationEngine.translate(locale, "alert_#{self.id}_message")
+    SimpleTranslationEngine.translate(locale, self.message_translation_key)
   end
 
   def subject locale=I18n.default_locale
-    SimpleTranslationEngine.translate(locale, "alert_#{self.id}_subject")
+    SimpleTranslationEngine.translate(locale, self.subject_translation_key)
+  end
+
+  def message_translation_key
+    "alert_#{self.id}_message"
+  end
+
+  def subject_translation_key
+    "alert_#{self.id}_subject"
   end
 
   # set translations e.g.,  locale="en", object="name", value="medical"
