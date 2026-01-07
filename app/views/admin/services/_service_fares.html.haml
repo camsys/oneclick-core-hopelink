@@ -32,7 +32,7 @@
        as: :text,
        label:"Fare Text (#{locale})",
        readonly: should_be_readonly,
-       input_html: {value: (@service.fare_text(locale) == "missing key #{@service.fare_text_translation_key}" ? "Fare details for this service." : @service.fare_text(locale))}
+       input_html: {value: (@service.fare_text(locale) == "missing key #{@service.fare_text_translation_key}" ? "" : @service.fare_text(locale))}
 
   -# FLAT
   -#.fare-inputs.flat-fare.hidden
