@@ -20,6 +20,7 @@ class Alert < ApplicationRecord
   ### SCOPES ###
   scope :expired, -> { where('expiration < ?', DateTime.now.in_time_zone).order('expiration DESC') }
   scope :current, -> { where('start_date <= ? AND expiration >= ?', DateTime.now.in_time_zone, DateTime.now.in_time_zone).order('start_date ASC') }
+  scope :current_and_future, -> { where('expiration >= ?', DateTime.now.in_time_zone).order('start_date ASC') }
   scope :is_published,  -> { where(published: true)}
   scope :for_everyone, -> { where(audience: "everyone")}
 

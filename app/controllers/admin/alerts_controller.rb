@@ -3,7 +3,7 @@ class Admin::AlertsController < Admin::AdminController
   load_and_authorize_resource
 
   def index
-    @alerts = Alert.current
+    @alerts = Alert.current_and_future
     @new_alert = Alert.new
   end
 
